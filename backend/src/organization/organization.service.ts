@@ -177,6 +177,8 @@ export class OrganizationService {
 
   async clearTables() {
     const ALLOWED_TABLES = [
+      'project_users',
+      'projects',
       'organization_invitations',
       'organization_users',
       'users',

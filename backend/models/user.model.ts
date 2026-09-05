@@ -1,5 +1,7 @@
-import { Table, Column, Model, DataType, HasMany } from 'sequelize-typescript';
+import { Table, Column, Model, DataType, HasMany, BelongsToMany } from 'sequelize-typescript';
 import { OrganizationUser } from './organization-user.model';
+import { Project } from './project.model';
+import { ProjectUser } from './project-user.model';
 
 @Table({
   tableName: 'users',
@@ -40,4 +42,7 @@ export class User extends Model<User> {
 
   @HasMany(() => OrganizationUser)
   declare organizationUsers: OrganizationUser[];
+
+  @BelongsToMany(() => Project, () => ProjectUser)
+  declare projects: Project[];
 }
