@@ -25,6 +25,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/sequelize": "^12.0.0",
     "bcrypt": "^6.0.0",
+    "better-auth": "^1.7.2",
     "pg": "^8.23.0",
     "pg-hstore": "^2.3.4",
     "reflect-metadata": "^0.2.2",
@@ -62,13 +63,18 @@
     "moduleFileExtensions": [
       "js",
       "json",
-      "ts"
+      "ts",
+      "mjs"
     ],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.(t|j)sx?$": "ts-jest",
+      "^.+\\.mjs$": "ts-jest"
     },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(better-auth|@better-auth|better-call)/)"
+    ],
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],

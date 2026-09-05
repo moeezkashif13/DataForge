@@ -6,13 +6,18 @@ import {
   HttpException,
   HttpStatus,
   Post,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { OrganizationService } from './organization.service';
+import { AllowAnonymous, Session, CurrentUser } from '../auth/auth.guard';
+import { getSessionCookieOptions } from '../auth/auth';
 
 @Controller('organization')
 export class OrganizationController {
   constructor(private readonly organizationService: OrganizationService) {}
 
+  @AllowAnonymous()
   @Post('register')
   async createOrganization(
     @Body()
@@ -23,6 +28,7 @@ export class OrganizationController {
       userEmail: string;
       userPassword: string;
     },
+    @Res({ passthrough: true }) res: Response,
   ) {
     const {
       organizationName,
@@ -43,26 +49,40 @@ export class OrganizationController {
     }
 
     try {
-      const { organization, user } =
-        await this.organizationService.registerOrganization({
-          organizationName,
-          userFirstName,
-          userLastName,
-          userEmail,
-          userPassword,
-        });
+      const result = await this.organizationService.registerOrganization({
+        organizationName,
+        userFirstName,
+        userLastName,
+        userEmail,
+        userPassword,
+      });
+
+      if (result.token) {
+        res.cookie(
+          'better-auth.session_token',
+          result.token,
+          getSessionCookieOptions(),
+        );
+        res.setHeader('set-auth-token', result.token);
+      }
 
       return {
         statusCode: 201,
         message: 'Organization and initial user created successfully',
-        organizationId: organization.id,
-        userId: user.id,
+        organizationId: result.organization.id,
+        user: result.user,
+        session: result.session,
+        token: result.token,
       };
-    } catch (error) {
-      throw new HttpException('Internal server error', HttpStatus.BAD_REQUEST);
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Failed to create organization and user',
+        error.status || HttpStatus.BAD_REQUEST,
+      );
     }
   }
 
+  @AllowAnonymous()
   @Post('clear-tables')
   async clearTables() {
     try {
@@ -83,9 +103,10 @@ export class OrganizationController {
 
   @Post('invite')
   async inviteUser(
-    @Body() body: { organizationId: string; email: string; invitedBy?: string },
+    @Body() body: { organizationId: string; email: string },
+    @CurrentUser() user: { id: string } | null,
   ) {
-    const { organizationId, email, invitedBy } = body;
+    const { organizationId, email } = body;
 
     if (!organizationId || !email) {
       throw new HttpException(
@@ -94,10 +115,18 @@ export class OrganizationController {
       );
     }
 
+    const invitedBy = user?.id;
+    if (!invitedBy) {
+      throw new HttpException(
+        'Authentication required to invite users',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
     try {
       const invitation = await this.organizationService.inviteUser({
         organizationId,
-        invitedBy: invitedBy || '',
+        invitedBy,
         email,
       });
 
@@ -107,15 +136,16 @@ export class OrganizationController {
         token: invitation.token,
         expiresAt: invitation.expiresAt,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating invitation:', error);
       throw new HttpException(
         error.message || 'Internal server error',
-        HttpStatus.BAD_REQUEST,
+        error.status || HttpStatus.BAD_REQUEST,
       );
     }
   }
 
+  @AllowAnonymous()
   @Post('accept-invitation')
   async acceptInvitation(
     @Body()
@@ -126,6 +156,7 @@ export class OrganizationController {
       password: string;
       email?: string;
     },
+    @Res({ passthrough: true }) res: Response,
   ) {
     const { token, firstName, lastName, password, email } = body;
 
@@ -137,26 +168,36 @@ export class OrganizationController {
     }
 
     try {
-      const { organization, user } =
-        await this.organizationService.acceptInvitation({
-          token,
-          firstName,
-          lastName,
-          password,
-          email,
-        });
+      const result = await this.organizationService.acceptInvitation({
+        token,
+        firstName,
+        lastName,
+        password,
+        email,
+      });
+
+      if (result.token) {
+        res.cookie(
+          'better-auth.session_token',
+          result.token,
+          getSessionCookieOptions(),
+        );
+        res.setHeader('set-auth-token', result.token);
+      }
 
       return {
         statusCode: 201,
         message: 'Invitation accepted successfully',
-        organizationId: organization.id,
-        userId: user.id,
+        organizationId: result.organization.id,
+        user: result.user,
+        session: result.session,
+        token: result.token,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error accepting invitation:', error);
       throw new HttpException(
         error.message || 'Internal server error',
-        HttpStatus.BAD_REQUEST,
+        error.status || HttpStatus.BAD_REQUEST,
       );
     }
   }

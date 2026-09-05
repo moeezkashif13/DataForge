@@ -1,5 +1,3 @@
-//@ts-nocheck
-
 import { Injectable } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/sequelize';
 import { Transaction } from 'sequelize';
@@ -8,7 +6,7 @@ import { Organization } from '../../models/organization.model';
 import { User } from '../../models/user.model';
 import { OrganizationUser } from '../../models/organization-user.model';
 import { OrganizationInvitation } from '../../models/organization-invitation.model';
-import * as bcrypt from 'bcrypt';
+import { auth } from '../auth/auth';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -34,12 +32,45 @@ export class OrganizationService {
     return crypto.randomBytes(32).toString('hex');
   }
 
+  private async createUserWithBetterAuth(input: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+  }) {
+    const signUp = await auth.api.signUpEmail({
+      body: {
+        name: `${input.firstName} ${input.lastName}`.trim(),
+        email: input.email,
+        password: input.password,
+        firstName: input.firstName,
+        lastName: input.lastName,
+      },
+    });
+
+    const session = 'session' in signUp ? (signUp as any).session : null;
+    const token = ('token' in signUp && signUp.token) || session?.token || null;
+
+    return {
+      id: signUp.user.id,
+      email: signUp.user.email,
+      name: signUp.user.name,
+      user: signUp.user,
+      session,
+      token,
+    };
+  }
+
+  private async rollbackUser(userId: string): Promise<void> {
+    await this.userModel.destroy({ where: { id: userId } });
+  }
+
   async createOrganization(
     name: string,
     transaction?: Transaction,
   ): Promise<Organization> {
     return this.organizationModel.create(
-      { name } as Partial<Organization>,
+      { name } as any,
       transaction ? { transaction } : undefined,
     );
   }
@@ -50,12 +81,13 @@ export class OrganizationService {
     email: string,
     password: string,
     transaction?: Transaction,
-  ): Promise<User> {
-    const passwordHash = await bcrypt.hash(password, 10);
-    return this.userModel.create(
-      { firstName, lastName, email, passwordHash } as Partial<User>,
-      transaction ? { transaction } : undefined,
-    );
+  ) {
+    return this.createUserWithBetterAuth({
+      firstName,
+      lastName,
+      email,
+      password,
+    });
   }
 
   async associateUserToOrganization(
@@ -65,7 +97,7 @@ export class OrganizationService {
     transaction?: Transaction,
   ): Promise<OrganizationUser> {
     return this.organizationUserModel.create(
-      { organizationId, userId, role } as Partial<OrganizationUser>,
+      { organizationId, userId, role } as any,
       transaction ? { transaction } : undefined,
     );
   }
@@ -76,28 +108,38 @@ export class OrganizationService {
     userLastName: string;
     userEmail: string;
     userPassword: string;
-  }): Promise<{ organization: Organization; user: User }> {
-    const result = await this.sequelize.transaction(async (transaction) => {
-      const organization = await this.createOrganization(
-        input.organizationName,
-        transaction,
-      );
-      const user = await this.createInitialUser(
-        input.userFirstName,
-        input.userLastName,
-        input.userEmail,
-        input.userPassword,
-        transaction,
-      );
-      await this.associateUserToOrganization(
-        organization.id,
-        user.id,
-        'admin',
-        transaction,
-      );
-      return { organization, user };
+  }) {
+    const authResult = await this.createUserWithBetterAuth({
+      firstName: input.userFirstName,
+      lastName: input.userLastName,
+      email: input.userEmail,
+      password: input.userPassword,
     });
-    return result;
+
+    try {
+      const result = await this.sequelize.transaction(async (transaction) => {
+        const organization = await this.createOrganization(
+          input.organizationName,
+          transaction,
+        );
+        await this.associateUserToOrganization(
+          organization.id,
+          authResult.id,
+          'admin',
+          transaction,
+        );
+        return {
+          organization,
+          user: authResult.user,
+          session: authResult.session,
+          token: authResult.token,
+        };
+      });
+      return result;
+    } catch (error) {
+      await this.rollbackUser(authResult.id);
+      throw error;
+    }
   }
 
   async inviteUser(input: {
@@ -106,7 +148,6 @@ export class OrganizationService {
     email: string;
   }): Promise<OrganizationInvitation> {
     const token = this.generateInviteToken();
-    // Default expiry e.g. 3 days from now
     const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
 
     const invitation = this.organizationInvitationModel.create({
@@ -116,7 +157,7 @@ export class OrganizationService {
       token,
       status: 'pending',
       expiresAt,
-    } as Partial<OrganizationInvitation>);
+    } as any);
 
     return invitation;
   }
@@ -127,7 +168,7 @@ export class OrganizationService {
     lastName: string;
     password: string;
     email?: string;
-  }): Promise<{ organization: Organization; user: User }> {
+  }) {
     const invitation = await this.organizationInvitationModel.findOne({
       where: { token: input.token },
     });
@@ -144,39 +185,54 @@ export class OrganizationService {
       throw new Error('Invitation has expired');
     }
 
-    const result = await this.sequelize.transaction(async (transaction) => {
-      const user = await this.createInitialUser(
-        input.firstName,
-        input.lastName,
-        input.email || invitation.email,
-        input.password,
-        transaction,
-      );
-
-      await this.associateUserToOrganization(
-        invitation.organizationId,
-        user.id,
-        'user',
-        transaction,
-      );
-
-      invitation.status = 'accepted';
-      invitation.acceptedAt = new Date();
-      await invitation.save({ transaction });
-
-      const organization = await this.organizationModel.findByPk(
-        invitation.organizationId,
-        { transaction },
-      );
-
-      return { organization, user };
+    const authResult = await this.createUserWithBetterAuth({
+      firstName: input.firstName,
+      lastName: input.lastName,
+      email: input.email || invitation.email,
+      password: input.password,
     });
 
-    return result;
+    try {
+      const result = await this.sequelize.transaction(async (transaction) => {
+        await this.associateUserToOrganization(
+          invitation.organizationId,
+          authResult.id,
+          'user',
+          transaction,
+        );
+
+        invitation.status = 'accepted';
+        invitation.acceptedAt = new Date();
+        await invitation.save({ transaction });
+
+        const organization = await this.organizationModel.findByPk(
+          invitation.organizationId,
+          { transaction },
+        );
+
+        if (!organization) {
+          throw new Error('Organization not found');
+        }
+
+        return {
+          organization,
+          user: authResult.user,
+          session: authResult.session,
+          token: authResult.token,
+        };
+      });
+      return result;
+    } catch (error) {
+      await this.rollbackUser(authResult.id);
+      throw error;
+    }
   }
 
   async clearTables() {
     const ALLOWED_TABLES = [
+      'session',
+      'account',
+      'verification',
       'project_users',
       'projects',
       'organization_invitations',
@@ -184,17 +240,8 @@ export class OrganizationService {
       'users',
       'organizations',
     ];
-    // const ALLOWED_TABLES = ['users'];
 
-    const tableNames = ALLOWED_TABLES;
-
-    // if (invalidTables.length > 0) {
-    //   throw new BadRequestException(
-    //     `Invalid table names: ${invalidTables.join(', ')}`,
-    //   );
-    // }
-
-    for (const table of tableNames) {
+    for (const table of ALLOWED_TABLES) {
       await this.sequelize.query(`DELETE FROM "${table}"`);
     }
 

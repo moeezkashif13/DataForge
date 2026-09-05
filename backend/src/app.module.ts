@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { OrganizationModule } from './organization/organization.module';
+import { AuthModule } from './auth/auth.module';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { Organization } from 'models/organization.model';
 import { User } from 'models/user.model';
@@ -14,17 +15,17 @@ import { ProjectUser } from 'models/project-user.model';
   imports: [
     SequelizeModule.forRoot({
       dialect: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: 'postgres',
-      password: 'root',
-      database: 'dataforge',
+      host: process.env.DB_HOST || 'localhost',
+      port: Number(process.env.DB_PORT) || 5432,
+      username: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || 'root',
+      database: process.env.DB_NAME || 'dataforge',
 
       autoLoadModels: true,
       synchronize: false,
     }),
-    // SequelizeModule.forFeature([Organization, User, OrganizationUser]),
 
+    AuthModule,
     OrganizationModule,
   ],
   controllers: [AppController],

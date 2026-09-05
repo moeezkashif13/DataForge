@@ -1,4 +1,11 @@
-import { Table, Column, Model, DataType, HasMany, BelongsToMany } from 'sequelize-typescript';
+import {
+  Table,
+  Column,
+  Model,
+  DataType,
+  HasMany,
+  BelongsToMany,
+} from 'sequelize-typescript';
 import { OrganizationUser } from './organization-user.model';
 import { Project } from './project.model';
 import { ProjectUser } from './project-user.model';
@@ -17,15 +24,21 @@ export class User extends Model<User> {
 
   @Column({
     type: DataType.STRING(255),
-    allowNull: false,
+    allowNull: true,
   })
-  declare firstName: string;
+  declare firstName: string | null;
+
+  @Column({
+    type: DataType.STRING(255),
+    allowNull: true,
+  })
+  declare lastName: string | null;
 
   @Column({
     type: DataType.STRING(255),
     allowNull: false,
   })
-  declare lastName: string;
+  declare name: string;
 
   @Column({
     type: DataType.STRING(255),
@@ -35,10 +48,17 @@ export class User extends Model<User> {
   declare email: string;
 
   @Column({
-    type: DataType.STRING(255),
+    type: DataType.BOOLEAN,
     allowNull: false,
+    defaultValue: false,
   })
-  declare passwordHash: string;
+  declare emailVerified: boolean;
+
+  @Column({
+    type: DataType.TEXT,
+    allowNull: true,
+  })
+  declare image: string;
 
   @HasMany(() => OrganizationUser)
   declare organizationUsers: OrganizationUser[];
