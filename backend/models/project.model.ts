@@ -11,10 +11,18 @@ import {
 
 import { Organization } from './organization.model';
 import { ProjectUser } from './project-user.model';
+import { Migration } from './migration.model';
 
 @Table({
   tableName: 'projects',
   timestamps: true,
+  indexes: [
+    {
+      unique: true,
+      fields: ['organizationId', 'name'],
+      name: 'projects_organization_id_name_unique',
+    },
+  ],
 })
 export class Project extends Model<Project> {
   @Column({
@@ -58,4 +66,7 @@ export class Project extends Model<Project> {
 
   @HasMany(() => ProjectUser)
   declare projectUsers: ProjectUser[];
+
+  @HasMany(() => Migration)
+  declare migrations: Migration[];
 }

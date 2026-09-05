@@ -9,6 +9,7 @@ import {
 import { OrganizationUser } from './organization-user.model';
 import { Project } from './project.model';
 import { ProjectUser } from './project-user.model';
+import { Migration } from './migration.model';
 
 @Table({
   tableName: 'users',
@@ -65,4 +66,7 @@ export class User extends Model<User> {
 
   @BelongsToMany(() => Project, () => ProjectUser)
   declare projects: Project[];
+
+  @HasMany(() => Migration, { foreignKey: 'createdBy' })
+  declare createdMigrations: Migration[];
 }

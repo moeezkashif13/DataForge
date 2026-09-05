@@ -230,15 +230,16 @@ export class OrganizationService {
 
   async clearTables() {
     const ALLOWED_TABLES = [
-      'session',
-      'account',
-      'verification',
-      'project_users',
       'projects',
-      'organization_invitations',
-      'organization_users',
-      'users',
-      'organizations',
+      // 'session',
+      // 'account',
+      // 'verification',
+      // 'project_users',
+      // 'projects',
+      // 'organization_invitations',
+      // 'organization_users',
+      // 'users',
+      // 'organizations',
     ];
 
     for (const table of ALLOWED_TABLES) {

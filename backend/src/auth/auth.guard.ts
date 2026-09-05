@@ -48,7 +48,7 @@ export class BetterAuthGuard implements CanActivate {
     });
 
     if (!session) {
-      throw new UnauthorizedException('Authentication required');
+      throw new UnauthorizedException('Please login to perform this action');
     }
 
     request.session = session;

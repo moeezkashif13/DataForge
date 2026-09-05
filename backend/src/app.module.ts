@@ -4,12 +4,7 @@ import { AppService } from './app.service';
 import { OrganizationModule } from './organization/organization.module';
 import { AuthModule } from './auth/auth.module';
 import { SequelizeModule } from '@nestjs/sequelize';
-import { Organization } from 'models/organization.model';
-import { User } from 'models/user.model';
-import { OrganizationUser } from 'models/organization-user.model';
-import { OrganizationInvitation } from 'models/organization-invitation.model';
-import { Project } from 'models/project.model';
-import { ProjectUser } from 'models/project-user.model';
+import { MigrationsModule } from './migrations/migrations.module';
 
 @Module({
   imports: [
@@ -27,6 +22,7 @@ import { ProjectUser } from 'models/project-user.model';
 
     AuthModule,
     OrganizationModule,
+    MigrationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -4,8 +4,11 @@ import {
   HttpException,
   HttpStatus,
   Post,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ProjectService } from './project.service';
+import { CreateProjectDto } from './dto/create-project.dto';
+import { CurrentUser } from '../auth/auth.guard';
 
 @Controller('organization/projects')
 export class ProjectController {
@@ -13,43 +16,22 @@ export class ProjectController {
 
   @Post('create')
   async createProject(
-    @Body()
-    body: {
-      organizationId: string;
-      name: string;
-      description?: string;
-      status?: string;
-      userIds: string[];
-    },
+    @Body() body: CreateProjectDto,
+    @CurrentUser() user: { id: string },
   ) {
-    const { organizationId, name, description, status, userIds } = body;
-
-    if (!organizationId || !name) {
-      throw new HttpException(
-        'organizationId and name are required',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
     try {
       const { project, associatedUsers } =
-        await this.projectService.createProjectWithUsers({
-          organizationId,
-          name,
-          description,
-          status,
-          userIds: userIds || [],
-        });
+        await this.projectService.createProjectWithUsers(body, user.id);
 
       return {
-        statusCode: 201,
+        statusCode: HttpStatus.CREATED,
         message: 'Project created successfully',
         projectId: project.id,
         name: project.name,
-        associatedUsers,
+        status: project.status,
+        // associatedUsers,
       };
-    } catch (error) {
-      console.error('Error creating project:', error);
+    } catch (error: any) {
       throw new HttpException(
         error.message || 'Internal server error',
         error.status || HttpStatus.BAD_REQUEST,
