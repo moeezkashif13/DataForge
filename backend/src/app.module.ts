@@ -6,6 +6,7 @@ import { SequelizeModule } from '@nestjs/sequelize';
 import { Organization } from 'models/organization.model';
 import { User } from 'models/user.model';
 import { OrganizationUser } from 'models/organization-user.model';
+import { OrganizationInvitation } from 'models/organization-invitation.model';
 
 @Module({
   imports: [
