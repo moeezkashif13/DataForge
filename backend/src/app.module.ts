@@ -5,6 +5,7 @@ import { OrganizationModule } from './organization/organization.module';
 import { AuthModule } from './auth/auth.module';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { MigrationsModule } from './migrations/migrations.module';
+import { ExecutionAgentModule } from './execution-agent/execution-agent.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { MigrationsModule } from './migrations/migrations.module';
     AuthModule,
     OrganizationModule,
     MigrationsModule,
+    ExecutionAgentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

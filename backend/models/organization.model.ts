@@ -1,6 +1,7 @@
 import { Table, Column, Model, DataType, HasMany } from 'sequelize-typescript';
 import { OrganizationUser } from './organization-user.model';
 import { Project } from './project.model';
+import { Agent } from './agent.model';
 
 @Table({
   tableName: 'organizations',
@@ -26,4 +27,7 @@ export class Organization extends Model<Organization> {
 
   @HasMany(() => Project)
   declare projects: Project[];
+
+  @HasMany(() => Agent)
+  declare agents: Agent[];
 }
