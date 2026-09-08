@@ -282,6 +282,7 @@ export class ExecutionAgentService {
       {
         agent_id: agent.id,
         organization_id: agent.organizationId,
+        type: 'ea_token',
       },
       {
         secret,
