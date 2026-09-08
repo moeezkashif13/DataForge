@@ -6,6 +6,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
+import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
 import { Agent, AgentStatus } from '../../models/agent.model';
 import { ConnectionToken } from '../../models/connection-token.model';
@@ -29,6 +30,8 @@ export class ExecutionAgentService {
 
     @InjectModel(OrganizationUser)
     private readonly organizationUserModel: typeof OrganizationUser,
+
+    private readonly jwtService: JwtService,
   ) {}
 
   async createAgent(
@@ -202,5 +205,101 @@ export class ExecutionAgentService {
       ],
       order: [['createdAt', 'DESC']],
     });
+  }
+
+  async verifyConnectionToken(token: string): Promise<{
+    accessToken: string;
+    // token: string;
+    // agentId: string;
+    // organizationId: string;
+    // agent: {
+    //   id: string;
+    //   name: string;
+    //   status: AgentStatus;
+    //   organizationId: string;
+    // };
+  }> {
+    if (!token || typeof token !== 'string' || !token.trim()) {
+      throw new UnauthorizedException('Connection token is required');
+    }
+
+    const trimmedToken = token.trim();
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(trimmedToken)
+      .digest('hex');
+
+    const connectionTokenRecord = await this.connectionTokenModel.findOne({
+      where: {
+        token: hashedToken,
+      },
+      include: [
+        {
+          model: Agent,
+        },
+      ],
+    });
+
+    if (!connectionTokenRecord) {
+      throw new UnauthorizedException('Invalid connection token');
+    }
+
+    if (connectionTokenRecord.isRevoked) {
+      throw new UnauthorizedException('Connection token has been revoked');
+    }
+
+    if (
+      connectionTokenRecord.expiresAt &&
+      new Date(connectionTokenRecord.expiresAt) < new Date()
+    ) {
+      throw new UnauthorizedException('Connection token has expired');
+    }
+
+    const agent = connectionTokenRecord.agent;
+    if (!agent) {
+      throw new UnauthorizedException('Associated agent not found');
+    }
+
+    if (agent.status === AgentStatus.INACTIVE) {
+      throw new UnauthorizedException('Agent is inactive');
+    }
+
+    // Single-use enrollment: revoke immediately after first successful verification
+    connectionTokenRecord.isRevoked = true;
+    connectionTokenRecord.lastUsedAt = new Date();
+    await connectionTokenRecord.save();
+
+    agent.lastHeartbeatAt = new Date();
+    await agent.save();
+
+    const secret =
+      process.env.DEFAULT_JWT_SECRET ||
+      process.env.JWT_SECRET ||
+      process.env.AUTH_SECRET ||
+      'dataforge-agent-secret-key';
+
+    const jwtToken = this.jwtService.sign(
+      {
+        agent_id: agent.id,
+        organization_id: agent.organizationId,
+      },
+      {
+        secret,
+        expiresIn: (process.env.DEFAULT_JWT_EXPIRES_IN || '1d') as any,
+      },
+    );
+
+    return {
+      accessToken: jwtToken,
+      // token: jwtToken,
+      // agentId: agent.id,
+      // organizationId: agent.organizationId,
+      // agent: {
+      //   id: agent.id,
+      //   name: agent.name,
+      //   status: agent.status,
+      //   organizationId: agent.organizationId,
+      // },
+    };
   }
 }

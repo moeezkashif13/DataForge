@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/sequelize';
+import { JwtService } from '@nestjs/jwt';
 import {
   UnauthorizedException,
   ForbiddenException,
@@ -19,6 +20,7 @@ describe('ExecutionAgentService', () => {
   let mockConnectionTokenModel: any;
   let mockOrganizationModel: any;
   let mockOrganizationUserModel: any;
+  let mockJwtService: any;
 
   beforeEach(async () => {
     mockAgentModel = {
@@ -30,6 +32,7 @@ describe('ExecutionAgentService', () => {
 
     mockConnectionTokenModel = {
       create: jest.fn(),
+      findOne: jest.fn(),
     };
 
     mockOrganizationModel = {
@@ -38,6 +41,10 @@ describe('ExecutionAgentService', () => {
 
     mockOrganizationUserModel = {
       findOne: jest.fn(),
+    };
+
+    mockJwtService = {
+      sign: jest.fn().mockReturnValue('mocked.jwt.token'),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -58,6 +65,10 @@ describe('ExecutionAgentService', () => {
         {
           provide: getModelToken(OrganizationUser),
           useValue: mockOrganizationUserModel,
+        },
+        {
+          provide: JwtService,
+          useValue: mockJwtService,
         },
       ],
     }).compile();
@@ -176,6 +187,113 @@ describe('ExecutionAgentService', () => {
       await expect(
         service.generateConnectionToken('agent-123', {}, 'user-attacker'),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('verifyConnectionToken', () => {
+    const rawToken = 'df_agent_abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890';
+    const mockAgent = {
+      id: 'agent-uuid-001',
+      name: 'Worker Node 1',
+      organizationId: 'org-uuid-001',
+      status: AgentStatus.ACTIVE,
+      lastHeartbeatAt: null,
+      save: jest.fn().mockResolvedValue(true),
+    };
+
+    it('should successfully verify a valid connection token and return JWT with agent_id and organization_id', async () => {
+      const mockTokenRecord = {
+        id: 'token-rec-001',
+        agentId: mockAgent.id,
+        isRevoked: false,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // future
+        lastUsedAt: null,
+        agent: mockAgent,
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      mockConnectionTokenModel.findOne.mockResolvedValue(mockTokenRecord);
+
+      const result = await service.verifyConnectionToken(rawToken);
+
+      expect(mockConnectionTokenModel.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            token: expect.any(String), // hashed token
+          }),
+        }),
+      );
+      expect(mockJwtService.sign).toHaveBeenCalledWith(
+        {
+          agent_id: 'agent-uuid-001',
+          organization_id: 'org-uuid-001',
+        },
+        expect.objectContaining({
+          secret: expect.any(String),
+        }),
+      );
+      expect(mockTokenRecord.save).toHaveBeenCalled();
+      expect(mockTokenRecord.isRevoked).toBe(true);
+      expect(mockAgent.save).toHaveBeenCalled();
+      expect(result.accessToken).toBe('mocked.jwt.token');
+    });
+
+    it('should throw UnauthorizedException when token is missing or empty', async () => {
+      await expect(service.verifyConnectionToken('')).rejects.toThrow(
+        UnauthorizedException,
+      );
+      await expect(service.verifyConnectionToken('   ')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('should throw UnauthorizedException when token is not found in database', async () => {
+      mockConnectionTokenModel.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.verifyConnectionToken('invalid_token'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should throw UnauthorizedException when token is revoked', async () => {
+      mockConnectionTokenModel.findOne.mockResolvedValue({
+        id: 'token-rec-revoked',
+        isRevoked: true,
+        expiresAt: new Date(Date.now() + 100000),
+      });
+
+      await expect(
+        service.verifyConnectionToken(rawToken),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should throw UnauthorizedException when token is expired', async () => {
+      mockConnectionTokenModel.findOne.mockResolvedValue({
+        id: 'token-rec-expired',
+        isRevoked: false,
+        expiresAt: new Date(Date.now() - 100000), // in the past
+      });
+
+      await expect(
+        service.verifyConnectionToken(rawToken),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should throw UnauthorizedException when agent is inactive', async () => {
+      mockConnectionTokenModel.findOne.mockResolvedValue({
+        id: 'token-rec-001',
+        agentId: mockAgent.id,
+        isRevoked: false,
+        expiresAt: new Date(Date.now() + 100000),
+        agent: {
+          ...mockAgent,
+          status: AgentStatus.INACTIVE,
+        },
+      });
+
+      await expect(
+        service.verifyConnectionToken(rawToken),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 });

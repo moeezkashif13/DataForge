@@ -1,3 +1,4 @@
+import '../load-env';
 import { betterAuth } from 'better-auth';
 import { bearer } from 'better-auth/plugins';
 import { Pool } from 'pg';

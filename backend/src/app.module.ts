@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { OrganizationModule } from './organization/organization.module';
@@ -9,6 +10,12 @@ import { ExecutionAgentModule } from './execution-agent/execution-agent.module';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 60,
+      },
+    ]),
     SequelizeModule.forRoot({
       dialect: 'postgres',
       host: process.env.DB_HOST || 'localhost',
