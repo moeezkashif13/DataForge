@@ -4,17 +4,49 @@ import {
   Get,
   HttpException,
   HttpStatus,
+  Param,
   Post,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { ExecutionAgentService } from './execution-agent.service';
+import { RealtimeService } from '../realtime/realtime.service';
 import { ConnectAgentDto } from './dto/connect-agent.dto';
 import { AllowAnonymous } from '../auth/auth.guard';
 
 @Controller('execution-agent')
 export class PublicExecutionAgentController {
-  constructor(private readonly executionAgentService: ExecutionAgentService) {}
+  constructor(
+    private readonly executionAgentService: ExecutionAgentService,
+    private readonly realtimeService: RealtimeService,
+  ) {}
+
+  @AllowAnonymous()
+  @Post(':agentId/command')
+  async sendCommand(
+    @Param('agentId') agentId: string,
+    @Body() body: any,
+  ) {
+    const isConnected = this.realtimeService.isAgentConnected(agentId);
+    const sent = this.realtimeService.sendToAgent(
+      agentId,
+      'backend:command',
+      body,
+    );
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: sent
+        ? 'Command dispatched to agent successfully'
+        : 'Agent is not currently connected to WebSocket',
+      data: {
+        agentId,
+        isAgentConnected: isConnected,
+        delivered: sent,
+        payload: body,
+      },
+    };
+  }
 
   @AllowAnonymous()
   @UseGuards(ThrottlerGuard)
@@ -30,11 +62,9 @@ export class PublicExecutionAgentController {
         statusCode: HttpStatus.OK,
         message: 'Agent authenticated successfully',
         data: {
-          // token: result.token,
           accessToken: result.accessToken,
-          // agent_id: result.agentId,
-          // organization_id: result.organizationId,
-          // agent: result.agent,
+          agentId: result.agentId,
+          organizationId: result.organizationId,
         },
         // token: result.token,
         // accessToken: result.token,

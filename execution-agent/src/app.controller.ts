@@ -1,10 +1,26 @@
-import { Controller, Get, Query, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AppService } from './app.service';
+import { AgentSocketService } from './agent-socket/agent-socket.service';
 
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor(
+    private readonly appService: AppService,
+    private readonly agentSocketService: AgentSocketService,
+  ) {}
+
+  @Post('connect')
+  async connectToBackend(
+    @Body() body: { token?: string; backendUrl?: string },
+  ) {
+    return this.agentSocketService.connectToBackend(body);
+  }
+
+  @Get('status')
+  getStatus() {
+    return this.agentSocketService.getStatus();
+  }
 
   @Get()
   getHello(): string {

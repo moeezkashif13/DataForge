@@ -65,6 +65,13 @@ export class Agent extends Model<Agent> {
   declare status: AgentStatus;
 
   @Column({
+    type: DataType.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  })
+  declare connected: boolean;
+
+  @Column({
     type: DataType.DATE,
     allowNull: true,
     field: 'last_heartbeat_at',

@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { MigrationsModule } from './migrations/migrations.module';
 import { ExecutionAgentModule } from './execution-agent/execution-agent.module';
+import { RealtimeModule } from './realtime/realtime.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { ExecutionAgentModule } from './execution-agent/execution-agent.module';
     OrganizationModule,
     MigrationsModule,
     ExecutionAgentModule,
+    RealtimeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

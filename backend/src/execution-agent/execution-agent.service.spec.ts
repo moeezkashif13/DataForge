@@ -198,6 +198,7 @@ describe('ExecutionAgentService', () => {
       organizationId: 'org-uuid-001',
       status: AgentStatus.ACTIVE,
       lastHeartbeatAt: null,
+      connected: false,
       save: jest.fn().mockResolvedValue(true),
     };
 
@@ -234,8 +235,11 @@ describe('ExecutionAgentService', () => {
       );
       expect(mockTokenRecord.save).toHaveBeenCalled();
       expect(mockTokenRecord.isRevoked).toBe(true);
+      expect(mockAgent.connected).toBe(true);
       expect(mockAgent.save).toHaveBeenCalled();
       expect(result.accessToken).toBe('mocked.jwt.token');
+      expect(result.agentId).toBe('agent-uuid-001');
+      expect(result.organizationId).toBe('org-uuid-001');
     });
 
     it('should throw UnauthorizedException when token is missing or empty', async () => {

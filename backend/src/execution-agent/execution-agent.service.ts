@@ -209,15 +209,8 @@ export class ExecutionAgentService {
 
   async verifyConnectionToken(token: string): Promise<{
     accessToken: string;
-    // token: string;
-    // agentId: string;
-    // organizationId: string;
-    // agent: {
-    //   id: string;
-    //   name: string;
-    //   status: AgentStatus;
-    //   organizationId: string;
-    // };
+    agentId: string;
+    organizationId: string;
   }> {
     if (!token || typeof token !== 'string' || !token.trim()) {
       throw new UnauthorizedException('Connection token is required');
@@ -270,6 +263,7 @@ export class ExecutionAgentService {
     await connectionTokenRecord.save();
 
     agent.lastHeartbeatAt = new Date();
+    agent.connected = true;
     await agent.save();
 
     const secret =
@@ -292,15 +286,8 @@ export class ExecutionAgentService {
 
     return {
       accessToken: jwtToken,
-      // token: jwtToken,
-      // agentId: agent.id,
-      // organizationId: agent.organizationId,
-      // agent: {
-      //   id: agent.id,
-      //   name: agent.name,
-      //   status: agent.status,
-      //   organizationId: agent.organizationId,
-      // },
+      agentId: agent.id,
+      organizationId: agent.organizationId,
     };
   }
 }
