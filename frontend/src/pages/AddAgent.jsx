@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useState } from "react";
+import { useNavigate } from "react-router";
 import {
   Server,
   KeyRound,
@@ -7,64 +7,64 @@ import {
   Save,
   Loader2,
   ArrowLeft,
-} from 'lucide-react'
-import { useData } from '../context/DataContext'
-import { Breadcrumbs } from '../components/ui/Breadcrumbs'
-import { useToast } from '../context/ToastContext'
+} from "lucide-react";
+import { useData } from "../context/DataContext";
+import { Breadcrumbs } from "../components/ui/Breadcrumbs";
+import { useToast } from "../context/ToastContext";
 
 export default function AddAgent() {
-  const { registerAgent } = useData()
-  const navigate = useNavigate()
-  const { showToast } = useToast()
+  const { registerAgent } = useData();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
 
-  const [agentName, setAgentName] = useState('')
-  const [environment, setEnvironment] = useState('Production')
-  const [host, setHost] = useState('')
-  const [description, setDescription] = useState('')
-  const [isSaving, setIsSaving] = useState(false)
+  const [agentName, setAgentName] = useState("");
+  const [environment, setEnvironment] = useState("Production");
+  const [host, setHost] = useState("");
+  const [description, setDescription] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!agentName.trim()) {
-      showToast('Validation Error', 'Agent name is required', 'warning')
-      return
+      showToast("Validation Error", "Agent name is required", "warning");
+      return;
     }
 
-    setIsSaving(true)
+    setIsSaving(true);
     try {
       const newAgent = await registerAgent({
         name: agentName.trim(),
         environment,
-        host: host.trim() || 'worker-node-k8s.internal',
-        description: description.trim() || 'Customer-hosted migration agent',
-      })
+        host: host.trim() || "worker-node-k8s.internal",
+        description: description.trim() || "Customer-hosted migration agent",
+      });
 
       if (newAgent) {
         showToast(
-          'Agent Created',
+          "Agent Created",
           `Agent "${agentName.trim()}" created successfully. You can now generate a connection token.`,
-          'success'
-        )
-        navigate('/agents')
+          "success",
+        );
+        navigate("/agents");
       }
     } catch (err) {
-      console.error('Agent creation error:', err)
+      console.error("Agent creation error:", err);
       const errorMsg =
-        err?.data?.message || err?.message || 'Failed to create agent'
-      showToast('Error', errorMsg, 'error')
+        err?.data?.message || err?.message || "Failed to create agent";
+      showToast("Error", errorMsg, "error");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       {/* Breadcrumbs */}
       <Breadcrumbs
         items={[
-          { label: 'Agents', to: '/agents' },
-          { label: 'Add Migration Agent' },
+          { label: "Agents", to: "/agents" },
+          { label: "Add Migration Agent" },
         ]}
       />
 
@@ -75,12 +75,13 @@ export default function AddAgent() {
             Add Migration Agent
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Register a customer-hosted worker node. Execution occurs locally inside your private subnet.
+            Register a customer-hosted worker node. Execution occurs locally
+            inside your private subnet.
           </p>
         </div>
         <button
           type="button"
-          onClick={() => navigate('/agents')}
+          onClick={() => navigate("/agents")}
           className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors self-start sm:self-auto cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
@@ -93,7 +94,8 @@ export default function AddAgent() {
         <div className="flex items-center gap-2.5">
           <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <span>
-            <strong>Zero Inbound Ports:</strong> Agents establish an encrypted outbound-only WebSocket (mTLS) to the Control Plane.
+            <strong>Zero Inbound Ports:</strong> Agents establish an encrypted
+            outbound-only WebSocket (mTLS) to the Control Plane.
           </span>
         </div>
         <span className="font-mono text-[11px] text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
@@ -113,7 +115,8 @@ export default function AddAgent() {
                 Agent Configuration
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Define the identification and network scope for this execution runner.
+                Define the identification and network scope for this execution
+                runner.
               </p>
             </div>
           </div>
@@ -151,7 +154,8 @@ export default function AddAgent() {
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              Host / Node Identifier <span className="text-slate-400 font-normal">(Optional)</span>
+              Host / Node Identifier{" "}
+              <span className="text-slate-400 font-normal">(Optional)</span>
             </label>
             <input
               type="text"
@@ -164,7 +168,8 @@ export default function AddAgent() {
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              Description <span className="text-slate-400 font-normal">(Optional)</span>
+              Description{" "}
+              <span className="text-slate-400 font-normal">(Optional)</span>
             </label>
             <textarea
               rows={3}
@@ -183,7 +188,11 @@ export default function AddAgent() {
             <span>Connecting your agent after creation</span>
           </div>
           <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-[11px]">
-            Once you click <strong>Save Agent</strong>, this agent record will be registered in your organization. You can then click the <strong>Generate Token</strong> button on the agent card in the Agents dashboard to issue a secure, real connection token and container deployment snippet.
+            Once you click <strong>Save Agent</strong>, this agent record will
+            be registered in your organization. You can then click the{" "}
+            <strong>Generate Token</strong> button on the agent card in the
+            Agents dashboard to issue a secure, real connection token and
+            container deployment snippet.
           </p>
         </div>
 
@@ -192,7 +201,7 @@ export default function AddAgent() {
           <button
             type="button"
             disabled={isSaving}
-            onClick={() => navigate('/agents')}
+            onClick={() => navigate("/agents")}
             className="px-4 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer disabled:opacity-50"
           >
             Cancel
@@ -217,5 +226,5 @@ export default function AddAgent() {
         </div>
       </form>
     </div>
-  )
+  );
 }

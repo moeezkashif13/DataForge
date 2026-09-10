@@ -77,12 +77,6 @@ export class ExecutionAgentService {
   }
 
   async createAgent(dto: CreateAgentDto, creatorUserId: string): Promise<any> {
-    if (!creatorUserId) {
-      throw new UnauthorizedException(
-        'Authentication required to create an agent',
-      );
-    }
-
     let { organizationId, name, description } = dto;
 
     const orgMembership = await this.organizationUserModel.findOne({
@@ -95,13 +89,6 @@ export class ExecutionAgentService {
     if (!orgMembership) {
       throw new ForbiddenException('You are not a member of this organization');
     }
-
-    // const organization = await this.organizationModel.findByPk(organizationId);
-    // if (!organization) {
-    //   throw new NotFoundException(
-    //     `Organization with ID ${organizationId} not found`,
-    //   );
-    // }
 
     const existingAgent = await this.agentModel.findOne({
       where: {
@@ -395,6 +382,38 @@ export class ExecutionAgentService {
       accessToken: jwtToken,
       agentId: agent.id,
       organizationId: agent.organizationId,
+    };
+  }
+
+  async deleteAgent(
+    agentId: string,
+    userId: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const agent = await this.agentModel.findByPk(agentId);
+    if (!agent) {
+      throw new NotFoundException(`Agent with ID ${agentId} not found`);
+    }
+
+    const orgMembership = await this.organizationUserModel.findOne({
+      where: {
+        organizationId: agent.organizationId,
+        userId,
+      },
+    });
+
+    if (!orgMembership) {
+      throw new ForbiddenException(
+        'You do not have permission to delete this agent',
+      );
+    }
+
+    // PostgreSQL database-level foreign key constraint (ON DELETE CASCADE)
+    // automatically deletes all related connection tokens in a single atomic delete.
+    await agent.destroy();
+
+    return {
+      success: true,
+      message: 'Execution agent and related tokens deleted successfully',
     };
   }
 }

@@ -101,6 +101,9 @@ export class Agent extends Model<Agent> {
   })
   declare creator: User;
 
-  @HasMany(() => ConnectionToken)
+  @HasMany(() => ConnectionToken, {
+    foreignKey: 'agentId',
+    onDelete: 'CASCADE',
+  })
   declare connectionTokens: ConnectionToken[];
 }

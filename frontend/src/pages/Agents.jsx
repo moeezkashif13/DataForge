@@ -13,15 +13,17 @@ import {
   X,
   Loader2,
   Terminal,
+  Trash2,
 } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { useGenerateAgentTokenMutation } from "../store/api/agentsApi";
 import { useToast } from "../context/ToastContext";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { EmptyState } from "../components/ui/EmptyState";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 
 export default function Agents() {
-  const { agents } = useData();
+  const { agents, deleteAgent } = useData();
   const { showToast } = useToast();
   const [generateAgentTokenMutation] = useGenerateAgentTokenMutation();
 
@@ -31,6 +33,8 @@ export default function Agents() {
   const [tokenModalData, setTokenModalData] = useState(null);
   const [tokenCopied, setTokenCopied] = useState(false);
   const [commandCopied, setCommandCopied] = useState(false);
+  const [agentToDelete, setAgentToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const filteredAgents = agents.filter((a) => {
     const matchStatus = filterStatus === "ALL" || a.status === filterStatus;
@@ -57,7 +61,7 @@ export default function Agents() {
         // Fallback for mock demo agents if not in backend database
         if (agent.id?.startsWith("agent-") || !token) {
           const randomHex = Array.from({ length: 32 }, () =>
-            Math.floor(Math.random() * 16).toString(16)
+            Math.floor(Math.random() * 16).toString(16),
           ).join("");
           token = `df_agent_${randomHex}`;
           expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -81,7 +85,7 @@ export default function Agents() {
       showToast(
         "Token Generated",
         `Real connection token generated for "${agent.name}".`,
-        "success"
+        "success",
       );
     } catch (err) {
       console.error("Failed to generate token:", err);
@@ -105,6 +109,19 @@ export default function Agents() {
     setCommandCopied(true);
     showToast("Copied", "Docker run snippet copied to clipboard", "info");
     setTimeout(() => setCommandCopied(false), 2000);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!agentToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteAgent(agentToDelete.id);
+    } catch (err) {
+      console.error("Delete agent error:", err);
+    } finally {
+      setIsDeleting(false);
+      setAgentToDelete(null);
+    }
   };
 
   const dockerSnippet = (token) =>
@@ -209,7 +226,17 @@ export default function Agents() {
                       {agent.host}
                     </p>
                   </div>
-                  <StatusBadge status={agent.status} />
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <StatusBadge status={agent.status} />
+                    <button
+                      type="button"
+                      onClick={() => setAgentToDelete(agent)}
+                      className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
+                      title="Delete agent"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono py-2 border-y border-slate-100 dark:border-slate-800">
@@ -254,13 +281,15 @@ export default function Agents() {
                   <span className="text-[11px] text-slate-400 font-mono">
                     Uptime: {agent.uptime}
                   </span>
-                  <Link
-                    to={`/agents/${agent.id}`}
-                    className="inline-flex items-center gap-1 font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
-                  >
-                    <span>View agent</span>
-                    <ArrowUpRight className="w-3.5 h-3.5" />
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to={`/agents/${agent.id}`}
+                      className="inline-flex items-center gap-1 font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                    >
+                      <span>View agent</span>
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
                 </div>
 
                 <button
@@ -306,7 +335,10 @@ export default function Agents() {
                     Agent Connection Token
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Generated for: <span className="font-semibold text-slate-700 dark:text-slate-300">{tokenModalData.agent?.name}</span>
+                    Generated for:{" "}
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">
+                      {tokenModalData.agent?.name}
+                    </span>
                   </p>
                 </div>
               </div>
@@ -328,7 +360,9 @@ export default function Agents() {
                   Save this token somewhere safe
                 </p>
                 <p className="text-amber-800/90 dark:text-amber-300/90 leading-relaxed text-[11px]">
-                  Save this token somewhere because it will not be visible again. For security reasons, this raw token cannot be retrieved after you close this popup.
+                  Save this token somewhere because it will not be visible
+                  again. For security reasons, this raw token cannot be
+                  retrieved after you close this popup.
                 </p>
               </div>
             </div>
@@ -341,7 +375,8 @@ export default function Agents() {
                 </label>
                 {tokenModalData.expiresAt && (
                   <span className="text-[11px] text-slate-400 font-mono">
-                    Expires: {new Date(tokenModalData.expiresAt).toLocaleDateString()}
+                    Expires:{" "}
+                    {new Date(tokenModalData.expiresAt).toLocaleDateString()}
                   </span>
                 )}
               </div>
@@ -378,7 +413,9 @@ export default function Agents() {
               <div className="relative rounded-xl bg-slate-950 p-3 border border-slate-800 text-slate-300 font-mono text-[11px]">
                 <button
                   type="button"
-                  onClick={() => handleCopyCommand(dockerSnippet(tokenModalData.token))}
+                  onClick={() =>
+                    handleCopyCommand(dockerSnippet(tokenModalData.token))
+                  }
                   className="absolute right-2.5 top-2.5 p-1 rounded-md bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
                   title="Copy docker command"
                 >
@@ -407,6 +444,18 @@ export default function Agents() {
           </div>
         </div>
       )}
+
+      {/* Delete Agent Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={Boolean(agentToDelete)}
+        title={`Delete Agent "${agentToDelete?.name}"?`}
+        description="Are you sure you want to delete this migration agent? This will permanently delete the agent and all of its associated connection tokens. Any runner connected using these credentials will be disconnected."
+        confirmLabel={isDeleting ? "Deleting..." : "Delete Agent"}
+        cancelLabel="Cancel"
+        isDestructive={true}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setAgentToDelete(null)}
+      />
     </div>
   );
 }

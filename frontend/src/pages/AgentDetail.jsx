@@ -1,4 +1,5 @@
-import { useParams, Link } from "react-router";
+import { useState } from "react";
+import { useParams, Link, useNavigate } from "react-router";
 import {
   Server,
   Activity,
@@ -11,16 +12,22 @@ import {
   ArrowUpRight,
   CheckCircle2,
   Terminal,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { Breadcrumbs } from "../components/ui/Breadcrumbs";
 import { StatusBadge } from "../components/ui/StatusBadge";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { useGetAgentByIdQuery } from "../store/api/agentsApi";
 
 export default function AgentDetail() {
   const { agentId } = useParams();
-  const { agents, migrations, activities } = useData();
+  const navigate = useNavigate();
+  const { agents, migrations, activities, deleteAgent } = useData();
   const { data: apiAgent } = useGetAgentByIdQuery(agentId, { skip: !agentId });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const agent = apiAgent || agents.find((a) => a.id === agentId) || agents[0];
 
@@ -29,6 +36,20 @@ export default function AgentDetail() {
     (act) =>
       act.detail.includes(agent?.name || "") || act.title.includes("Agent"),
   );
+
+  const handleDeleteAgent = async () => {
+    if (!agent) return;
+    setIsDeleting(true);
+    try {
+      await deleteAgent(agent.id);
+      navigate('/agents');
+    } catch (err) {
+      console.error('Failed to delete agent:', err);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
 
   if (!agent) {
     return (
@@ -67,8 +88,18 @@ export default function AgentDetail() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 font-mono text-xs text-slate-500">
-          <span>Heartbeat: {agent.lastHeartbeat}</span>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-xs text-slate-500 mr-1">
+            Heartbeat: {agent.lastHeartbeat}
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 transition-all cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete Agent</span>
+          </button>
         </div>
       </div>
 
@@ -231,6 +262,18 @@ export default function AgentDetail() {
           </div>
         </div>
       </div>
+
+      {/* Delete Agent Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title={`Delete Agent "${agent?.name}"?`}
+        description="Are you sure you want to delete this migration agent? This will permanently remove the agent and revoke all associated connection tokens."
+        confirmLabel={isDeleting ? "Deleting..." : "Delete Agent"}
+        cancelLabel="Cancel"
+        isDestructive={true}
+        onConfirm={handleDeleteAgent}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }

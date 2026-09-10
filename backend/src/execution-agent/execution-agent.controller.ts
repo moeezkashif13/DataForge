@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpException,
   HttpStatus,
@@ -121,6 +122,36 @@ export class ExecutionAgentController {
         statusCode: HttpStatus.CREATED,
         message: 'Connection token generated successfully',
         data: tokenResult,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Internal server error',
+        error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Delete(':agentId')
+  async deleteAgent(
+    @Param('agentId') agentId: string,
+    @CurrentUser() user: { id: string } | null,
+  ) {
+    if (!user?.id) {
+      throw new UnauthorizedException(
+        'Authentication required to delete an execution agent',
+      );
+    }
+
+    try {
+      const result = await this.executionAgentService.deleteAgent(
+        agentId,
+        user.id,
+      );
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Execution agent and related tokens deleted successfully',
+        data: result,
       };
     } catch (error: any) {
       throw new HttpException(

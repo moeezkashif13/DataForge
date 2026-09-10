@@ -43,6 +43,17 @@ export const agentsApi = baseApi.injectEndpoints({
         body,
       }),
     }),
+
+    deleteAgent: builder.mutation({
+      query: (agentId) => ({
+        url: `/execution-agent/${agentId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (result, error, id) => [
+        { type: 'Agent', id },
+        { type: 'Agent', id: 'LIST' },
+      ],
+    }),
   }),
 })
 
@@ -51,4 +62,5 @@ export const {
   useGetAgentByIdQuery,
   useCreateAgentMutation,
   useGenerateAgentTokenMutation,
+  useDeleteAgentMutation,
 } = agentsApi
