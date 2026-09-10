@@ -20,6 +20,14 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      '/migrations': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/execution-agent': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
     },
   },
 })

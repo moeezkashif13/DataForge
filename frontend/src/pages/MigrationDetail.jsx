@@ -180,19 +180,19 @@ export default function MigrationDetail() {
             </span>
             <div className="flex items-baseline gap-3 mt-1">
               <span className="text-4xl font-extrabold font-mono text-slate-900 dark:text-white">
-                {migration.progress.toFixed(1)}%
+                {(Number(migration?.progress) || 0).toFixed(1)}%
               </span>
               <span className="text-sm font-mono text-slate-500">
-                {formatNumber(migration.recordsProcessed)} / {formatNumber(migration.recordsTotal)} records
+                {formatNumber(migration?.recordsProcessed)} / {formatNumber(migration?.recordsTotal)} records
               </span>
             </div>
           </div>
           <div className="flex items-center gap-4 text-xs font-mono text-slate-500">
-            <span>Started: {migration.startedAt}</span>
+            <span>Started: {migration?.startedAt}</span>
             <span>·</span>
-            <span>Elapsed: {migration.elapsed}</span>
+            <span>Elapsed: {migration?.elapsed}</span>
             <span>·</span>
-            <span className="text-indigo-600 dark:text-indigo-400 font-semibold">ETA: {migration.eta}</span>
+            <span className="text-indigo-600 dark:text-indigo-400 font-semibold">ETA: {migration?.eta}</span>
           </div>
         </div>
 
@@ -200,15 +200,15 @@ export default function MigrationDetail() {
         <div className="w-full h-3 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-500 ${
-              migration.status === 'COMPLETED'
+              migration?.status === 'COMPLETED'
                 ? 'bg-teal-500'
-                : migration.status === 'PAUSED'
+                : migration?.status === 'PAUSED'
                 ? 'bg-amber-500'
-                : migration.status === 'FAILED'
+                : migration?.status === 'FAILED'
                 ? 'bg-rose-500'
                 : 'bg-gradient-to-r from-indigo-500 via-emerald-500 to-teal-400'
             }`}
-            style={{ width: `${Math.min(100, migration.progress)}%` }}
+            style={{ width: `${Math.min(100, Number(migration?.progress) || 0)}%` }}
           />
         </div>
 

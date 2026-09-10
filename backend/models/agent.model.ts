@@ -15,6 +15,8 @@ import { ConnectionToken } from './connection-token.model';
 export enum AgentStatus {
   ACTIVE = 'active',
   INACTIVE = 'inactive',
+  CONNECTED = 'connected',
+  RUNNING = 'running',
 }
 
 @Table({

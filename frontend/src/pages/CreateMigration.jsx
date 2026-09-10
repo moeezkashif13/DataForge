@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import {
   ArrowRight,
@@ -24,11 +24,18 @@ export default function CreateMigration() {
   const { showToast } = useToast()
 
   const [step, setStep] = useState(1)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Step 1: Basic details
   const [name, setName] = useState('Customer Data Migration')
   const [projectId, setProjectId] = useState(projects[0]?.id || '')
   const [description, setDescription] = useState('Production customer records sync with field sanitization.')
+
+  useEffect(() => {
+    if (!projectId && projects.length > 0) {
+      setProjectId(projects[0].id)
+    }
+  }, [projects, projectId])
 
   // Step 2: Source
   const [sourceType, setSourceType] = useState('PostgreSQL')
@@ -100,29 +107,60 @@ export default function CreateMigration() {
     setMappings(mappings.map((m) => (m.id === id ? { ...m, [field]: value } : m)))
   }
 
-  const handleSubmit = (isDraft = false) => {
+  const handleSubmit = async (isDraft = false) => {
     const proj = projects.find((p) => p.id === projectId) || projects[0]
+    if (!proj) {
+      showToast('No Project Selected', 'Please create or select a project first.', 'error')
+      return
+    }
+
     const agent = agents.find((a) => a.id === selectedAgentId) || agents[0]
 
-    const newMig = addMigration({
-      name,
-      projectId: proj.id,
-      projectName: proj.name,
-      sourceConnId,
-      sourceType,
-      sourceTargetLabel: `${sourceDatabase}.${sourceTable} → ${targetDatabase}.${targetTable}`,
-      targetConnId,
-      targetType,
-      agentId: agent.id,
-      agentName: agent.name,
-      status: isDraft ? 'DRAFT' : 'READY',
-      recordsTotal: 1000000,
-      fieldMappingsCount: mappings.length,
-      batchSize,
-      retries: retryCount,
-    })
+    const sourcePath =
+      sourceType === 'CSV'
+        ? sourceCsvPath || '/var/data/exports/customers_dump.csv (Dummy)'
+        : `${sourceDatabase || 'production'}.${sourceSchema || 'public'}.${sourceTable || 'customers'}`
 
-    navigate(`/migrations/${newMig.id}`)
+    const targetPath = `${targetDatabase || 'analytics'}.${targetSchema || 'public'}.${targetTable || 'customers_v2'}`
+
+    setIsSubmitting(true)
+    try {
+      const createdMig = await addMigration({
+        name: name || 'Customer Data Migration (Dummy)',
+        projectId: proj.id,
+        projectName: proj.name || 'Customer Platform (Dummy)',
+        description:
+          description ||
+          'Production customer records sync with field sanitization (Dummy)',
+        source_path: sourcePath,
+        target_path: targetPath,
+        sourceConnId: sourceConnId || 'conn-pg-prod (Dummy)',
+        sourceType: sourceType || 'PostgreSQL (Dummy)',
+        sourceTargetLabel: `${sourcePath} → ${targetPath}`,
+        targetConnId: targetConnId || 'conn-pg-analytics (Dummy)',
+        targetType: targetType || 'PostgreSQL (Dummy)',
+        agentId: agent?.id || 'agent-prod-01 (Dummy)',
+        agentName: agent?.name || 'Production Agent US-East (Dummy)',
+        status: isDraft ? 'PAUSED' : 'RUNNING',
+        recordsTotal: 1000000,
+        fieldMappingsCount: mappings.length
+          ? `${mappings.length} (Dummy)`
+          : '6 (Dummy)',
+        batchSize: batchSize || 2000,
+        retries: retryCount || 3,
+      })
+
+      if (createdMig?.id) {
+        navigate(`/migrations/${createdMig.id}`)
+      } else {
+        navigate('/migrations')
+      }
+    } catch (err) {
+      console.error('Error submitting migration:', err)
+      showToast('Error', err?.message || 'Failed to create migration', 'error')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -206,17 +244,23 @@ export default function CreateMigration() {
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 Project
               </label>
-              <select
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="w-full px-3.5 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:border-indigo-500 text-slate-900 dark:text-slate-100"
-              >
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.environment})
-                  </option>
-                ))}
-              </select>
+              {projects.length === 0 ? (
+                <div className="p-3 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl">
+                  No projects available. Please create a project first before creating a migration.
+                </div>
+              ) : (
+                <select
+                  value={projectId}
+                  onChange={(e) => setProjectId(e.target.value)}
+                  className="w-full px-3.5 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:border-indigo-500 text-slate-900 dark:text-slate-100"
+                >
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.environment || 'Production (Dummy)'})
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div>
@@ -686,17 +730,19 @@ export default function CreateMigration() {
               <>
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => handleSubmit(true)}
-                  className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
                 >
-                  Save as Draft
+                  {isSubmitting ? 'Saving...' : 'Save as Draft'}
                 </button>
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => handleSubmit(false)}
-                  className="px-5 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20 transition-all active:scale-95"
+                  className="px-5 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20 transition-all active:scale-95 disabled:opacity-50"
                 >
-                  Create Migration
+                  {isSubmitting ? 'Creating...' : 'Create Migration'}
                 </button>
               </>
             ) : (

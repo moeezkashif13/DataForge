@@ -1,23 +1,32 @@
-import { useState } from 'react'
-import { Link } from 'react-router'
-import { Server, Plus, Search, ArrowUpRight, ShieldCheck, Activity, Cpu, HardDrive } from 'lucide-react'
-import { useData } from '../context/DataContext'
-import { StatusBadge } from '../components/ui/StatusBadge'
-import { EmptyState } from '../components/ui/EmptyState'
+import { useState } from "react";
+import { Link } from "react-router";
+import {
+  Server,
+  Plus,
+  Search,
+  ArrowUpRight,
+  ShieldCheck,
+  Activity,
+  Cpu,
+  HardDrive,
+} from "lucide-react";
+import { useData } from "../context/DataContext";
+import { StatusBadge } from "../components/ui/StatusBadge";
+import { EmptyState } from "../components/ui/EmptyState";
 
 export default function Agents() {
-  const { agents } = useData()
-  const [filterStatus, setFilterStatus] = useState('ALL')
-  const [searchQuery, setSearchQuery] = useState('')
+  const { agents } = useData();
+  const [filterStatus, setFilterStatus] = useState("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const filteredAgents = agents.filter((a) => {
-    const matchStatus = filterStatus === 'ALL' || a.status === filterStatus
+    const matchStatus = filterStatus === "ALL" || a.status === filterStatus;
     const matchSearch =
-      a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.host.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.environment.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchStatus && matchSearch
-  })
+      (a.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (a.host || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (a.environment || "").toLowerCase().includes(searchQuery.toLowerCase());
+    return matchStatus && matchSearch;
+  });
 
   return (
     <div className="space-y-6">
@@ -28,7 +37,8 @@ export default function Agents() {
             Migration Agents
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Agents execute migrations inside your infrastructure without exposing databases to the Internet.
+            Agents execute migrations inside your infrastructure without
+            exposing databases to the Internet.
           </p>
         </div>
         <Link
@@ -45,7 +55,8 @@ export default function Agents() {
         <div className="flex items-center gap-2.5">
           <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <span>
-            <strong>Zero Inbound Ports Required:</strong> All agents initiate encrypted outbound WSS connections to the Control Plane.
+            <strong>Zero Inbound Ports Required:</strong> All agents initiate
+            encrypted outbound WSS connections to the Control Plane.
           </span>
         </div>
         <span className="font-mono text-[11px] text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
@@ -56,15 +67,15 @@ export default function Agents() {
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
         <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs w-fit">
-          {['ALL', 'ONLINE', 'OFFLINE'].map((st) => (
+          {["ALL", "ONLINE", "CONNECTED", "RUNNING", "OFFLINE"].map((st) => (
             <button
               key={st}
               type="button"
               onClick={() => setFilterStatus(st)}
               className={`px-3 py-1 rounded-lg font-medium transition-all ${
                 filterStatus === st
-                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-semibold'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-semibold"
+                  : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
               }`}
             >
               {st.charAt(0) + st.slice(1).toLowerCase()}
@@ -91,7 +102,7 @@ export default function Agents() {
           title="No agents match your filter"
           description="Install a customer-hosted migration agent inside your Kubernetes or Docker cluster."
           actionLabel="Add agent"
-          onAction={() => window.location.assign('/agents/new')}
+          onAction={() => window.location.assign("/agents/new")}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -115,19 +126,33 @@ export default function Agents() {
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono py-2 border-y border-slate-100 dark:border-slate-800">
                   <div>
-                    <span className="text-[10px] text-slate-400 block">Version</span>
-                    <span className="text-slate-700 dark:text-slate-300">{agent.version}</span>
+                    <span className="text-[10px] text-slate-400 block">
+                      Version
+                    </span>
+                    <span className="text-slate-700 dark:text-slate-300">
+                      {agent.version}
+                    </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block">Environment</span>
-                    <span className="text-slate-700 dark:text-slate-300">{agent.environment}</span>
+                    <span className="text-[10px] text-slate-400 block">
+                      Environment
+                    </span>
+                    <span className="text-slate-700 dark:text-slate-300">
+                      {agent.environment}
+                    </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block">Heartbeat</span>
-                    <span className="text-slate-700 dark:text-slate-300">{agent.lastHeartbeat}</span>
+                    <span className="text-[10px] text-slate-400 block">
+                      Heartbeat
+                    </span>
+                    <span className="text-slate-700 dark:text-slate-300">
+                      {agent.lastHeartbeat}
+                    </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block">Active Jobs</span>
+                    <span className="text-[10px] text-slate-400 block">
+                      Active Jobs
+                    </span>
                     <span className="text-indigo-600 dark:text-indigo-400 font-semibold">
                       {agent.activeMigrations} migrations
                     </span>
@@ -136,7 +161,9 @@ export default function Agents() {
               </div>
 
               <div className="flex items-center justify-between text-xs pt-1">
-                <span className="text-[11px] text-slate-400 font-mono">Uptime: {agent.uptime}</span>
+                <span className="text-[11px] text-slate-400 font-mono">
+                  Uptime: {agent.uptime}
+                </span>
                 <Link
                   to={`/agents/${agent.id}`}
                   className="inline-flex items-center gap-1 font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
@@ -150,5 +177,5 @@ export default function Agents() {
         </div>
       )}
     </div>
-  )
+  );
 }

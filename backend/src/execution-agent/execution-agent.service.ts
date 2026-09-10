@@ -34,24 +34,56 @@ export class ExecutionAgentService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async createAgent(
-    dto: CreateAgentDto,
-    creatorUserId: string,
-  ): Promise<Agent> {
+  formatAgent(agent: Agent) {
+    const data = agent.get ? agent.get({ plain: true }) : (agent as any);
+
+    return {
+      id: data.id,
+      name: data.name,
+      description:
+        data.description || 'Customer-hosted execution worker (Dummy)',
+      organizationId: data.organizationId,
+      organizationName:
+        data.organization?.name || 'Customer Organization (Dummy)',
+      status: data.status,
+
+      version: 'v1.4.2 (Dummy)',
+      environment: 'Production (Dummy)',
+      host: 'prod-migration-01.internal (Dummy)',
+      ip: '10.240.12.84 (Dummy)',
+      lastHeartbeat: data.lastHeartbeatAt
+        ? 'Just now (Dummy)'
+        : '6 seconds ago (Dummy)',
+      lastHeartbeatMs: 6000,
+      activeMigrations: 0,
+      totalCompleted: 0,
+      uptime: '99.98% (Dummy)',
+      cpuUsage: '18% (Dummy)',
+      memUsage: '1.4 GB / 8 GB (Dummy)',
+      networkEgress: '48.2 MB/s (Dummy)',
+      dockerImage: 'datarelay/migration-agent:v1.4.2 (Dummy)',
+      registeredAt: data.createdAt,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+      createdBy: data.createdBy,
+      creator: data.creator
+        ? {
+            id: data.creator.id,
+            name: data.creator.name,
+            email: data.creator.email,
+          }
+        : null,
+    };
+  }
+
+  async createAgent(dto: CreateAgentDto, creatorUserId: string): Promise<any> {
     if (!creatorUserId) {
       throw new UnauthorizedException(
         'Authentication required to create an agent',
       );
     }
 
-    const { organizationId, name, description } = dto;
-
-    const organization = await this.organizationModel.findByPk(organizationId);
-    if (!organization) {
-      throw new NotFoundException(
-        `Organization with ID ${organizationId} not found`,
-      );
-    }
+    let { organizationId, name, description } = dto;
 
     const orgMembership = await this.organizationUserModel.findOne({
       where: {
@@ -61,10 +93,15 @@ export class ExecutionAgentService {
     });
 
     if (!orgMembership) {
-      throw new ForbiddenException(
-        'You are not a member of this organization and cannot create agents for it',
-      );
+      throw new ForbiddenException('You are not a member of this organization');
     }
+
+    // const organization = await this.organizationModel.findByPk(organizationId);
+    // if (!organization) {
+    //   throw new NotFoundException(
+    //     `Organization with ID ${organizationId} not found`,
+    //   );
+    // }
 
     const existingAgent = await this.agentModel.findOne({
       where: {
@@ -74,16 +111,86 @@ export class ExecutionAgentService {
     });
 
     if (existingAgent) {
-      throw new ConflictException(`An agent with the name already exists`);
+      throw new ConflictException(
+        `An agent with the name "${name.trim()}" already exists in this organization`,
+      );
     }
 
-    return this.agentModel.create({
+    const created = await this.agentModel.create({
       organizationId,
       createdBy: creatorUserId,
       name: name.trim(),
       description: description ? description.trim() : null,
       status: AgentStatus.ACTIVE,
     } as any);
+
+    const reloaded = await this.agentModel.findByPk(created.id, {
+      include: [
+        {
+          model: Organization,
+          attributes: ['id', 'name'],
+        },
+        {
+          model: User,
+          attributes: ['id', 'name', 'email'],
+        },
+      ],
+    });
+
+    return this.formatAgent(reloaded || created);
+  }
+
+  async getAgentsForUser(
+    userId: string,
+    organizationId?: string,
+  ): Promise<any[]> {
+    if (!userId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    let targetOrgIds: string[] = [];
+
+    if (organizationId) {
+      const membership = await this.organizationUserModel.findOne({
+        where: { organizationId, userId },
+      });
+
+      if (!membership) {
+        throw new ForbiddenException(
+          'You are not a member of this organization',
+        );
+      }
+      targetOrgIds = [organizationId];
+    } else {
+      const userOrgs = await this.organizationUserModel.findAll({
+        where: { userId },
+        attributes: ['organizationId'],
+      });
+
+      if (!userOrgs.length) {
+        return [];
+      }
+      targetOrgIds = userOrgs.map((o) => o.organizationId);
+    }
+
+    const agents = await this.agentModel.findAll({
+      where: {
+        organizationId: targetOrgIds,
+      },
+      include: [
+        {
+          model: Organization,
+          attributes: ['id', 'name'],
+        },
+        {
+          model: User,
+          attributes: ['id', 'name', 'email'],
+        },
+      ],
+      order: [['createdAt', 'DESC']],
+    });
+
+    return agents.map((agent) => this.formatAgent(agent));
   }
 
   async generateConnectionToken(
@@ -146,7 +253,7 @@ export class ExecutionAgentService {
     };
   }
 
-  async getAgentById(agentId: string, userId: string): Promise<Agent> {
+  async getAgentById(agentId: string, userId: string) {
     const agent = await this.agentModel.findByPk(agentId, {
       include: [
         {
@@ -175,7 +282,7 @@ export class ExecutionAgentService {
       throw new ForbiddenException('You do not have access to this agent');
     }
 
-    return agent;
+    return this.formatAgent(agent);
   }
 
   async getAgentsByOrganization(
@@ -263,7 +370,7 @@ export class ExecutionAgentService {
     await connectionTokenRecord.save();
 
     agent.lastHeartbeatAt = new Date();
-    agent.connected = true;
+    agent.status = AgentStatus.CONNECTED;
     await agent.save();
 
     const secret =

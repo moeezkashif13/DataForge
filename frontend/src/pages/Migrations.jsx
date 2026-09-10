@@ -27,10 +27,10 @@ export default function Migrations() {
   const filteredMigrations = migrations.filter((m) => {
     const matchStatus = statusFilter === 'ALL' || m.status === statusFilter
     const matchSearch =
-      m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.projectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.sourceTargetLabel.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.agentName.toLowerCase().includes(searchQuery.toLowerCase())
+      (m.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (m.projectName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (m.sourceTargetLabel || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (m.agentName || '').toLowerCase().includes(searchQuery.toLowerCase())
     return matchStatus && matchSearch
   })
 
@@ -160,7 +160,7 @@ export default function Migrations() {
                       <div className="space-y-1">
                         <div className="flex justify-between text-[11px] font-mono">
                           <span className="font-semibold text-slate-900 dark:text-white">
-                            {m.progress.toFixed(1)}%
+                            {(Number(m.progress) || 0).toFixed(1)}%
                           </span>
                           <span className="text-slate-400">
                             {formatNumber(m.recordsProcessed)}
@@ -177,7 +177,7 @@ export default function Migrations() {
                                 ? 'bg-rose-500'
                                 : 'bg-emerald-500'
                             }`}
-                            style={{ width: `${Math.min(100, m.progress)}%` }}
+                            style={{ width: `${Math.min(100, Number(m.progress) || 0)}%` }}
                           />
                         </div>
                       </div>

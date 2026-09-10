@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ExecutionAgentService } from './execution-agent.service';
@@ -16,6 +17,64 @@ import { AllowAnonymous, CurrentUser } from '../auth/auth.guard';
 @Controller('execution-agent')
 export class ExecutionAgentController {
   constructor(private readonly executionAgentService: ExecutionAgentService) {}
+
+  @Get()
+  async getAgents(
+    @CurrentUser() user: { id: string } | null,
+    @Query('organizationId') organizationId?: string,
+  ) {
+    if (!user?.id) {
+      throw new UnauthorizedException(
+        'Authentication required to retrieve execution agents',
+      );
+    }
+
+    try {
+      const agents = await this.executionAgentService.getAgentsForUser(
+        user.id,
+        organizationId,
+      );
+
+      return {
+        statusCode: HttpStatus.OK,
+        agents,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Internal server error',
+        error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Get(':agentId')
+  async getAgent(
+    @Param('agentId') agentId: string,
+    @CurrentUser() user: { id: string } | null,
+  ) {
+    if (!user?.id) {
+      throw new UnauthorizedException(
+        'Authentication required to retrieve agent details',
+      );
+    }
+
+    try {
+      const agent = await this.executionAgentService.getAgentById(
+        agentId,
+        user.id,
+      );
+
+      return {
+        statusCode: HttpStatus.OK,
+        agent,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Internal server error',
+        error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
 
   @Post('create')
   async create(

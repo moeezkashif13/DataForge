@@ -7,8 +7,8 @@ import {
 
 export class CreateAgentDto {
   @IsUUID()
-  @IsNotEmpty()
-  organizationId: string;
+  @IsOptional()
+  organizationId?: string;
 
   @IsString()
   @IsNotEmpty()

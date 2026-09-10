@@ -8,11 +8,20 @@ import { Migration } from '../../models/migration.model';
 import { Project } from '../../models/project.model';
 import { ProjectUser } from '../../models/project-user.model';
 import { User } from '../../models/user.model';
+import { Organization } from '../../models/organization.model';
+import { OrganizationUser } from '../../models/organization-user.model';
 import { EAAuthGuard } from './guards/ea-auth.guard';
 
 @Module({
   imports: [
-    SequelizeModule.forFeature([Migration, Project, ProjectUser, User]),
+    SequelizeModule.forFeature([
+      Migration,
+      Project,
+      ProjectUser,
+      User,
+      Organization,
+      OrganizationUser,
+    ]),
     JwtModule.register({
       secret: process.env.DEFAULT_JWT_SECRET,
     }),

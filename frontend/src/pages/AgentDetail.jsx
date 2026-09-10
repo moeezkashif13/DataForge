@@ -1,4 +1,4 @@
-import { useParams, Link } from 'react-router'
+import { useParams, Link } from "react-router";
 import {
   Server,
   Activity,
@@ -11,27 +11,43 @@ import {
   ArrowUpRight,
   CheckCircle2,
   Terminal,
-} from 'lucide-react'
-import { useData } from '../context/DataContext'
-import { Breadcrumbs } from '../components/ui/Breadcrumbs'
-import { StatusBadge } from '../components/ui/StatusBadge'
+} from "lucide-react";
+import { useData } from "../context/DataContext";
+import { Breadcrumbs } from "../components/ui/Breadcrumbs";
+import { StatusBadge } from "../components/ui/StatusBadge";
+import { useGetAgentByIdQuery } from "../store/api/agentsApi";
 
 export default function AgentDetail() {
-  const { agentId } = useParams()
-  const { agents, migrations, activities } = useData()
+  const { agentId } = useParams();
+  const { agents, migrations, activities } = useData();
+  const { data: apiAgent } = useGetAgentByIdQuery(agentId, { skip: !agentId });
 
-  const agent = agents.find((a) => a.id === agentId) || agents[0]
+  const agent = apiAgent || agents.find((a) => a.id === agentId) || agents[0];
 
-  const agentMigrations = migrations.filter((m) => m.agentId === agent.id)
-  const agentActivities = activities.filter((act) => act.detail.includes(agent.name) || act.title.includes('Agent'))
+  const agentMigrations = migrations.filter((m) => m.agentId === agent?.id);
+  const agentActivities = activities.filter(
+    (act) =>
+      act.detail.includes(agent?.name || "") || act.title.includes("Agent"),
+  );
+
+  if (!agent) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-3">
+        <Server className="w-8 h-8 text-slate-400 animate-pulse" />
+        <p className="text-sm font-medium text-slate-500">
+          Loading agent details...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Breadcrumbs */}
       <Breadcrumbs
         items={[
-          { label: 'Agents', to: '/agents' },
-          { label: agent.name },
+          { label: "Agents", to: "/agents" },
+          { label: agent?.name || "Agent" },
         ]}
       />
 
@@ -42,15 +58,12 @@ export default function AgentDetail() {
             <Server className="w-6 h-6" />
           </div>
           <div>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                {agent.name}
+                {agent?.name}
               </h1>
-              <StatusBadge status={agent.status} size="md" />
+              <StatusBadge status={agent?.status} size="md" />
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono">
-              Host: {agent.host} · Version: {agent.version} · IP: {agent.ip}
-            </p>
           </div>
         </div>
 
@@ -66,7 +79,9 @@ export default function AgentDetail() {
             <span>CPU Utilization</span>
             <Cpu className="w-3.5 h-3.5" />
           </div>
-          <p className="text-xl font-bold font-mono text-slate-900 dark:text-white">{agent.cpuUsage}</p>
+          <p className="text-xl font-bold font-mono text-slate-900 dark:text-white">
+            {agent.cpuUsage}
+          </p>
           <p className="text-[10px] text-slate-400">Worker process pool</p>
         </div>
 
@@ -75,7 +90,9 @@ export default function AgentDetail() {
             <span>Memory Allocated</span>
             <HardDrive className="w-3.5 h-3.5" />
           </div>
-          <p className="text-xl font-bold font-mono text-slate-900 dark:text-white">{agent.memUsage}</p>
+          <p className="text-xl font-bold font-mono text-slate-900 dark:text-white">
+            {agent.memUsage}
+          </p>
           <p className="text-[10px] text-slate-400">Resident memory heap</p>
         </div>
 
@@ -84,7 +101,9 @@ export default function AgentDetail() {
             <span>Network Egress</span>
             <Network className="w-3.5 h-3.5" />
           </div>
-          <p className="text-xl font-bold font-mono text-slate-900 dark:text-white">{agent.networkEgress}</p>
+          <p className="text-xl font-bold font-mono text-slate-900 dark:text-white">
+            {agent.networkEgress}
+          </p>
           <p className="text-[10px] text-slate-400">Internal subnet stream</p>
         </div>
 
@@ -105,13 +124,19 @@ export default function AgentDetail() {
         {/* Active Migrations */}
         <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white">Active Workloads</h2>
-            <span className="text-xs font-mono text-slate-500">{agentMigrations.length} assigned</span>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+              Active Workloads
+            </h2>
+            <span className="text-xs font-mono text-slate-500">
+              {agentMigrations.length} assigned
+            </span>
           </div>
 
           <div className="space-y-3">
             {agentMigrations.length === 0 ? (
-              <p className="text-xs text-slate-400 py-6 text-center">No active migrations assigned to this agent.</p>
+              <p className="text-xs text-slate-400 py-6 text-center">
+                No active migrations assigned to this agent.
+              </p>
             ) : (
               agentMigrations.map((m) => (
                 <div
@@ -128,7 +153,9 @@ export default function AgentDetail() {
                       </Link>
                       <StatusBadge status={m.status} />
                     </div>
-                    <p className="text-[11px] text-slate-400 font-mono mt-0.5">{m.sourceTargetLabel}</p>
+                    <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                      {m.sourceTargetLabel}
+                    </p>
                   </div>
                   <Link
                     to={`/migrations/${m.id}`}
@@ -145,15 +172,26 @@ export default function AgentDetail() {
 
         {/* Recent Events */}
         <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-4">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white">Agent Audit Log</h2>
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+            Agent Audit Log
+          </h2>
           <div className="space-y-3 text-xs">
             {agentActivities.map((act) => (
-              <div key={act.id} className="flex items-start gap-3 border-b border-slate-100 dark:border-slate-800 pb-2">
+              <div
+                key={act.id}
+                className="flex items-start gap-3 border-b border-slate-100 dark:border-slate-800 pb-2"
+              >
                 <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
                 <div>
-                  <p className="font-semibold text-slate-800 dark:text-slate-200">{act.title}</p>
-                  <p className="text-slate-500 dark:text-slate-400">{act.detail}</p>
-                  <span className="text-[10px] text-slate-400 font-mono">{act.timestamp}</span>
+                  <p className="font-semibold text-slate-800 dark:text-slate-200">
+                    {act.title}
+                  </p>
+                  <p className="text-slate-500 dark:text-slate-400">
+                    {act.detail}
+                  </p>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {act.timestamp}
+                  </span>
                 </div>
               </div>
             ))}
@@ -163,22 +201,36 @@ export default function AgentDetail() {
 
       {/* Safe Configuration View */}
       <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-4">
-        <h2 className="text-sm font-bold text-slate-900 dark:text-white">Safe Configuration Manifest</h2>
+        <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+          Safe Configuration Manifest
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-mono">
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-            <span className="text-slate-400 text-[10px] block mb-1">Docker Image</span>
-            <span className="text-slate-800 dark:text-slate-200">{agent.dockerImage}</span>
+            <span className="text-slate-400 text-[10px] block mb-1">
+              Docker Image
+            </span>
+            <span className="text-slate-800 dark:text-slate-200">
+              {agent.dockerImage}
+            </span>
           </div>
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-            <span className="text-slate-400 text-[10px] block mb-1">mTLS Certificate Status</span>
-            <span className="text-emerald-600 dark:text-emerald-400">Valid (Expires in 89 days)</span>
+            <span className="text-slate-400 text-[10px] block mb-1">
+              mTLS Certificate Status
+            </span>
+            <span className="text-emerald-600 dark:text-emerald-400">
+              Valid (Expires in 89 days)
+            </span>
           </div>
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-            <span className="text-slate-400 text-[10px] block mb-1">Inbound Port Exposure</span>
-            <span className="text-slate-800 dark:text-slate-200">0 open ports (Egress only)</span>
+            <span className="text-slate-400 text-[10px] block mb-1">
+              Inbound Port Exposure
+            </span>
+            <span className="text-slate-800 dark:text-slate-200">
+              0 open ports (Egress only)
+            </span>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

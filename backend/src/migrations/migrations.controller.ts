@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Get,
   HttpException,
   HttpStatus,
   Post,
+  Query,
   UnauthorizedException,
 } from '@nestjs/common';
 import { MigrationsService } from './migrations.service';
@@ -14,7 +16,36 @@ import { CurrentUser } from '../auth/auth.guard';
 export class MigrationsController {
   constructor(private readonly migrationsService: MigrationsService) {}
 
-  @Post()
+  @Get()
+  async getMigrations(
+    @CurrentUser() user: { id: string } | null,
+    @Query('projectId') projectId?: string,
+  ) {
+    if (!user?.id) {
+      throw new UnauthorizedException(
+        'Authentication required to retrieve migrations',
+      );
+    }
+
+    try {
+      const migrations = await this.migrationsService.getMigrationsForUser(
+        user.id,
+        projectId,
+      );
+
+      return {
+        statusCode: HttpStatus.OK,
+        migrations,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Internal server error',
+        error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Post('create')
   async create(
     @Body() body: CreateMigrationDto,
     @CurrentUser() user: { id: string } | null,
@@ -42,13 +73,5 @@ export class MigrationsController {
         error.status || HttpStatus.BAD_REQUEST,
       );
     }
-  }
-
-  @Post('create')
-  async createAlias(
-    @Body() body: CreateMigrationDto,
-    @CurrentUser() user: { id: string } | null,
-  ) {
-    return this.create(body, user);
   }
 }

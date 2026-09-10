@@ -2,6 +2,12 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { useSelector, useDispatch } from 'react-redux'
 import { selectIsAuthenticated, selectOrganizationId, setCredentials } from '../store/slices/authSlice'
 import { useGetProjectsQuery, useCreateProjectMutation } from '../store/api/projectsApi'
+import { useGetMigrationsQuery, useCreateMigrationMutation } from '../store/api/migrationsApi'
+import {
+  useGetAgentsQuery,
+  useCreateAgentMutation,
+  useGenerateAgentTokenMutation,
+} from '../store/api/agentsApi'
 import {
   initialWorkspaces,
   initialProjects,
@@ -152,32 +158,83 @@ export function DataProvider({ children }) {
   }
 
   // Agents
-  const [agents, setAgents] = useState(initialAgents)
+  const {
+    data: apiAgents,
+    isLoading: isAgentsLoading,
+    refetch: refetchAgents,
+  } = useGetAgentsQuery(organizationId || undefined, {
+    skip: !isAuthenticated,
+  })
+  const [createAgentMutation] = useCreateAgentMutation()
+  const [generateAgentTokenMutation] = useGenerateAgentTokenMutation()
 
-  const registerAgent = (agentData) => {
+  const [localAgents, setLocalAgents] = useState([])
+  const agents =
+    isAuthenticated && apiAgents
+      ? apiAgents
+      : localAgents.length
+        ? localAgents
+        : initialAgents
+
+  const registerAgent = async (agentData) => {
+    const activeOrgId =
+      organizationId ||
+      apiProjects?.organizationId ||
+      apiAgents?.[0]?.organizationId
+
+    if (isAuthenticated) {
+      try {
+        const payload = {
+          organizationId: activeOrgId,
+          name: agentData.name,
+          description:
+            agentData.description ||
+            'Customer-hosted migration agent (Dummy)',
+        }
+        const res = await createAgentMutation(payload).unwrap()
+        const created = res?.data || res
+
+        addActivity({
+          type: 'AGENT_ENROLLED',
+          title: 'Agent registered',
+          detail: `Agent "${created.name || agentData.name}" successfully enrolled via secure token`,
+          user: 'Current User',
+          icon: 'server',
+          severity: 'success',
+        })
+        showToast('Agent Online', `Agent "${created.name || agentData.name}" enrolled.`, 'success')
+        return created
+      } catch (err) {
+        console.error('Failed to register agent via backend, creating locally:', err)
+        showToast('Creation Note', err?.data?.message || err?.message || 'Saved locally', 'warning')
+      }
+    }
+
     const newAgent = {
       id: `agent-${Date.now()}`,
       status: 'ONLINE',
-      version: 'v1.4.2',
-      ip: '10.240.19.102',
-      lastHeartbeat: 'Just now',
+      version: 'v1.4.2 (Dummy)',
+      ip: '10.240.19.102 (Dummy)',
+      host: agentData.host || 'worker-node-k8s.internal (Dummy)',
+      environment: agentData.environment || 'Production (Dummy)',
+      lastHeartbeat: 'Just now (Dummy)',
       lastHeartbeatMs: 1000,
       activeMigrations: 0,
       totalCompleted: 0,
-      uptime: '100% (< 1 hour)',
-      cpuUsage: '3%',
-      memUsage: '340 MB / 8 GB',
-      networkEgress: '0.0 MB/s',
-      dockerImage: 'datarelay/migration-agent:v1.4.2',
+      uptime: '100% (< 1 hour) (Dummy)',
+      cpuUsage: '3% (Dummy)',
+      memUsage: '340 MB / 8 GB (Dummy)',
+      networkEgress: '0.0 MB/s (Dummy)',
+      dockerImage: 'datarelay/migration-agent:v1.4.2 (Dummy)',
       registeredAt: new Date().toISOString(),
       ...agentData,
     }
-    setAgents((prev) => [newAgent, ...prev])
+    setLocalAgents((prev) => [newAgent, ...prev])
     addActivity({
       type: 'AGENT_ENROLLED',
       title: 'Agent registered',
       detail: `Agent "${newAgent.name}" successfully enrolled via secure token`,
-      user: 'Abdul Moeez',
+      user: 'Current User',
       icon: 'server',
       severity: 'success',
     })
@@ -224,9 +281,67 @@ export function DataProvider({ children }) {
   }
 
   // Migrations
-  const [migrations, setMigrations] = useState(initialMigrations)
+  const {
+    data: apiMigrations,
+    isLoading: isMigrationsLoading,
+    refetch: refetchMigrations,
+  } = useGetMigrationsQuery(undefined, {
+    skip: !isAuthenticated,
+  })
+  const [createMigrationMutation] = useCreateMigrationMutation()
 
-  const addMigration = (migrationData) => {
+  const [localMigrations, setLocalMigrations] = useState([])
+  const [migrationOverrides, setMigrationOverrides] = useState({})
+
+  const baseMigrations =
+    isAuthenticated && apiMigrations
+      ? apiMigrations
+      : localMigrations.length
+        ? localMigrations
+        : initialMigrations
+
+  const migrations = baseMigrations.map((m) =>
+    migrationOverrides[m.id] ? { ...m, ...migrationOverrides[m.id] } : m
+  )
+
+  const addMigration = async (migrationData) => {
+    if (isAuthenticated) {
+      try {
+        const payload = {
+          projectId: migrationData.projectId,
+          name: migrationData.name,
+          description:
+            migrationData.description ||
+            'Production customer records sync with field sanitization (Dummy)',
+          source_path:
+            migrationData.source_path || 'production.customers (Dummy)',
+          target_path:
+            migrationData.target_path || 'analytics.customers_v2 (Dummy)',
+        }
+
+        const res = await createMigrationMutation(payload).unwrap()
+        const created = res?.data || res
+
+        addActivity({
+          type: 'MIGRATION_CREATED',
+          title: 'Migration configured',
+          detail: `Created definition "${created.name || migrationData.name}" for ${migrationData.projectName || 'Project'}`,
+          user: 'Current User',
+          icon: 'workflow',
+          severity: 'info',
+        })
+        showToast(
+          'Migration Created',
+          `"${created.name || migrationData.name}" is configured and ready for execution.`,
+          'success',
+        )
+        return created
+      } catch (err) {
+        console.error('Failed to create migration via backend, creating locally:', err)
+        showToast('Creation Note', err?.data?.message || err?.message || 'Saved locally', 'warning')
+      }
+    }
+
     const newMig = {
       id: `mig-${Date.now()}`,
       status: 'READY',
@@ -235,21 +350,21 @@ export function DataProvider({ children }) {
       recordsSucceeded: 0,
       recordsFailed: 0,
       throughput: 0,
-      startedAt: 'Ready to start',
+      startedAt: 'Ready to start (Dummy)',
       elapsed: '--',
-      eta: 'Pending run',
-      checkpoint: 'initial_state',
+      eta: 'Pending run (Dummy)',
+      checkpoint: 'initial_state (Dummy)',
       retries: 0,
       batchSize: 2000,
-      lastRun: 'Never',
+      lastRun: 'Never (Dummy)',
       ...migrationData,
     }
-    setMigrations((prev) => [newMig, ...prev])
+    setLocalMigrations((prev) => [newMig, ...prev])
     addActivity({
       type: 'MIGRATION_CREATED',
       title: 'Migration configured',
-      detail: `Created definition "${newMig.name}" for ${newMig.projectName}`,
-      user: 'Abdul Moeez',
+      detail: `Created definition "${newMig.name}" for ${newMig.projectName || 'Project'}`,
+      user: 'Current User',
       icon: 'workflow',
       severity: 'info',
     })
@@ -258,24 +373,21 @@ export function DataProvider({ children }) {
   }
 
   const startMigration = (migId) => {
-    setMigrations((prev) =>
-      prev.map((m) =>
-        m.id === migId
-          ? {
-              ...m,
-              status: 'RUNNING',
-              startedAt: 'Just now',
-              throughput: 720,
-              eta: '~14 minutes',
-            }
-          : m
-      )
-    )
+    setMigrationOverrides((prev) => ({
+      ...prev,
+      [migId]: {
+        ...(prev[migId] || {}),
+        status: 'RUNNING',
+        startedAt: 'Just now (Dummy)',
+        throughput: 720,
+        eta: '~14 minutes (Dummy)',
+      },
+    }))
     addActivity({
       type: 'MIGRATION_STARTED',
       title: 'Migration execution triggered',
       detail: `Control plane dispatched run command to assigned agent`,
-      user: 'Abdul Moeez',
+      user: 'Current User',
       icon: 'play',
       severity: 'active',
     })
@@ -283,23 +395,20 @@ export function DataProvider({ children }) {
   }
 
   const pauseMigration = (migId) => {
-    setMigrations((prev) =>
-      prev.map((m) =>
-        m.id === migId
-          ? {
-              ...m,
-              status: 'PAUSED',
-              throughput: 0,
-              eta: 'Paused',
-            }
-          : m
-      )
-    )
+    setMigrationOverrides((prev) => ({
+      ...prev,
+      [migId]: {
+        ...(prev[migId] || {}),
+        status: 'PAUSED',
+        throughput: 0,
+        eta: 'Paused (Dummy)',
+      },
+    }))
     addActivity({
       type: 'MIGRATION_PAUSED',
       title: 'Migration paused',
       detail: `Agent saved checkpoint and paused active consumer threads`,
-      user: 'Abdul Moeez',
+      user: 'Current User',
       icon: 'pause',
       severity: 'warning',
     })
@@ -307,23 +416,20 @@ export function DataProvider({ children }) {
   }
 
   const resumeMigration = (migId) => {
-    setMigrations((prev) =>
-      prev.map((m) =>
-        m.id === migId
-          ? {
-              ...m,
-              status: 'RUNNING',
-              throughput: 680,
-              eta: '~8 minutes',
-            }
-          : m
-      )
-    )
+    setMigrationOverrides((prev) => ({
+      ...prev,
+      [migId]: {
+        ...(prev[migId] || {}),
+        status: 'RUNNING',
+        throughput: 680,
+        eta: '~8 minutes (Dummy)',
+      },
+    }))
     addActivity({
       type: 'MIGRATION_RESUMED',
       title: 'Migration resumed',
       detail: `Resumed from checkpoint without record duplication`,
-      user: 'Abdul Moeez',
+      user: 'Current User',
       icon: 'play',
       severity: 'active',
     })
@@ -331,23 +437,20 @@ export function DataProvider({ children }) {
   }
 
   const cancelMigration = (migId) => {
-    setMigrations((prev) =>
-      prev.map((m) =>
-        m.id === migId
-          ? {
-              ...m,
-              status: 'CANCELLED',
-              throughput: 0,
-              eta: 'Cancelled',
-            }
-          : m
-      )
-    )
+    setMigrationOverrides((prev) => ({
+      ...prev,
+      [migId]: {
+        ...(prev[migId] || {}),
+        status: 'CANCELLED',
+        throughput: 0,
+        eta: 'Cancelled (Dummy)',
+      },
+    }))
     addActivity({
       type: 'MIGRATION_CANCELLED',
       title: 'Migration cancelled',
       detail: `Operation halted by user. Checkpoint stored for audit.`,
-      user: 'Abdul Moeez',
+      user: 'Current User',
       icon: 'x',
       severity: 'error',
     })
@@ -402,32 +505,49 @@ export function DataProvider({ children }) {
   // Real-time progress simulator (simulates active stream in control plane)
   useEffect(() => {
     const interval = setInterval(() => {
-      setMigrations((prev) =>
-        prev.map((m) => {
-          if (m.status === 'RUNNING' && m.recordsProcessed < m.recordsTotal) {
+      setMigrationOverrides((prev) => {
+        const next = { ...prev }
+        let hasChanges = false
+        for (const m of baseMigrations) {
+          const current = next[m.id] ? { ...m, ...next[m.id] } : m
+          if (
+            current.status === 'RUNNING' &&
+            typeof current.recordsProcessed === 'number' &&
+            typeof current.recordsTotal === 'number' &&
+            current.recordsProcessed < current.recordsTotal
+          ) {
             const increment = Math.floor(Math.random() * 250) + 150
-            const newProcessed = Math.min(m.recordsTotal, m.recordsProcessed + increment)
-            const failedIncrement = Math.random() > 0.85 ? Math.floor(Math.random() * 3) : 0
-            const newSucceeded = m.recordsSucceeded + (increment - failedIncrement)
-            const newFailed = m.recordsFailed + failedIncrement
-            const newProgress = Number(((newProcessed / m.recordsTotal) * 100).toFixed(1))
+            const newProcessed = Math.min(
+              current.recordsTotal,
+              current.recordsProcessed + increment,
+            )
+            const failedIncrement =
+              Math.random() > 0.85 ? Math.floor(Math.random() * 3) : 0
+            const newSucceeded =
+              (current.recordsSucceeded || 0) + (increment - failedIncrement)
+            const newFailed = (current.recordsFailed || 0) + failedIncrement
+            const newProgress = Number(
+              ((newProcessed / current.recordsTotal) * 100).toFixed(1),
+            )
 
-            return {
-              ...m,
+            next[m.id] = {
+              ...(next[m.id] || {}),
               recordsProcessed: newProcessed,
               recordsSucceeded: newSucceeded,
               recordsFailed: newFailed,
               progress: newProgress,
-              status: newProcessed >= m.recordsTotal ? 'COMPLETED' : 'RUNNING',
+              status:
+                newProcessed >= current.recordsTotal ? 'COMPLETED' : 'RUNNING',
             }
+            hasChanges = true
           }
-          return m
-        })
-      )
+        }
+        return hasChanges ? next : prev
+      })
     }, 3500)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [baseMigrations])
 
   return (
     <DataContext.Provider
@@ -443,11 +563,16 @@ export function DataProvider({ children }) {
         refetchProjects,
         addProject,
         agents,
+        isAgentsLoading,
+        refetchAgents,
         registerAgent,
+        generateAgentToken: generateAgentTokenMutation,
         connections,
         addConnection,
         testConnection,
         migrations,
+        isMigrationsLoading,
+        refetchMigrations,
         addMigration,
         startMigration,
         pauseMigration,

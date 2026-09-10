@@ -17,7 +17,7 @@ import { Breadcrumbs } from '../components/ui/Breadcrumbs'
 import { useToast } from '../context/ToastContext'
 
 export default function AddAgent() {
-  const { registerAgent } = useData()
+  const { registerAgent, generateAgentToken } = useData()
   const navigate = useNavigate()
   const { showToast } = useToast()
 
@@ -29,32 +29,60 @@ export default function AddAgent() {
   const [copied, setCopied] = useState(false)
   const [waitingStatus, setWaitingStatus] = useState('idle') // 'idle' | 'waiting' | 'connected'
   const [createdAgentId, setCreatedAgentId] = useState(null)
+  const [isGenerating, setIsGenerating] = useState(false)
 
-  const generateToken = () => {
-    const raw = 'drl_enroll_sec_' + Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
-    setEnrollmentToken(raw)
-    setTokenGenerated(true)
-    setWaitingStatus('waiting')
-    showToast('Enrollment Token Generated', 'Token valid for 30 minutes. Run the command on your host.', 'info')
-  }
+  const generateToken = async () => {
+    setIsGenerating(true)
+    try {
+      const newAgent = await registerAgent({
+        name: agentName,
+        environment,
+        host: 'worker-node-k8s.internal (Dummy)',
+        description: 'Customer-hosted migration agent (Dummy)',
+      })
 
-  // Simulate agent connection heartbeat
-  useEffect(() => {
-    if (waitingStatus === 'waiting') {
-      const timer = setTimeout(() => {
-        const newAgent = registerAgent({
-          name: agentName,
-          environment,
-          host: 'worker-node-k8s.internal',
-        })
+      if (newAgent?.id) {
         setCreatedAgentId(newAgent.id)
-        setWaitingStatus('connected')
-        showToast('Agent Connected', `Agent "${agentName}" established WebSocket connection.`, 'success')
-      }, 4500)
+        let token = ''
+        if (generateAgentToken) {
+          try {
+            const tokenRes = await generateAgentToken({ agentId: newAgent.id }).unwrap()
+            token = tokenRes?.data?.token || tokenRes?.token
+          } catch (tErr) {
+            console.error('Token generation error:', tErr)
+          }
+        }
 
-      return () => clearTimeout(timer)
+        if (!token) {
+          token =
+            'drl_enroll_sec_' +
+            Array.from({ length: 32 }, () =>
+              Math.floor(Math.random() * 16).toString(16),
+            ).join('')
+        }
+
+        setEnrollmentToken(token)
+        setTokenGenerated(true)
+        setWaitingStatus('waiting')
+        showToast(
+          'Agent Registered & Token Generated',
+          'Token valid for host execution. Connecting to agent...',
+          'info',
+        )
+
+        // Simulate agent connection heartbeat
+        setTimeout(() => {
+          setWaitingStatus('connected')
+          showToast('Agent Connected', `Agent "${agentName}" connected.`, 'success')
+        }, 3000)
+      }
+    } catch (err) {
+      console.error('Agent creation error:', err)
+      showToast('Error', err?.message || 'Failed to create agent', 'error')
+    } finally {
+      setIsGenerating(false)
     }
-  }, [waitingStatus, agentName, environment, registerAgent, showToast])
+  }
 
   const copyCommand = (text) => {
     navigator.clipboard?.writeText(text)
@@ -151,10 +179,11 @@ helm upgrade --install datarelay-agent datarelay/agent \\
           {!tokenGenerated ? (
             <button
               type="button"
+              disabled={isGenerating}
               onClick={generateToken}
-              className="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20 transition-all cursor-pointer"
+              className="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20 transition-all cursor-pointer disabled:opacity-50"
             >
-              Generate enrollment token
+              {isGenerating ? 'Generating token...' : 'Generate enrollment token'}
             </button>
           ) : (
             <div className="space-y-3">
