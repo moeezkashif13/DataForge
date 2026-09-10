@@ -4,11 +4,13 @@ import { JwtModule } from '@nestjs/jwt';
 import { RealtimeGateway } from './realtime.gateway';
 import { RealtimeService } from './realtime.service';
 import { Agent } from '../../models/agent.model';
+import { Migration } from '../../models/migration.model';
+import { Project } from '../../models/project.model';
 
 @Global()
 @Module({
   imports: [
-    SequelizeModule.forFeature([Agent]),
+    SequelizeModule.forFeature([Agent, Migration, Project]),
     JwtModule.register({
       secret:
         process.env.DEFAULT_JWT_SECRET ||

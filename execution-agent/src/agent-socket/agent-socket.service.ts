@@ -164,7 +164,7 @@ export class AgentSocketService implements OnModuleInit, OnModuleDestroy {
       // Listen for commands/events sent from the backend to this agent
       this.socket.on('backend:command', (payload: any) => {
         this.logger.log(
-          `[1-to-1 Command from Backend]: ${JSON.stringify(payload)}`,
+          `[1-to-1 Command from Backend]:\n${JSON.stringify(payload, null, 2)}`,
         );
       });
 

@@ -4,16 +4,40 @@ import { JwtService } from '@nestjs/jwt';
 import { RealtimeGateway } from './realtime.gateway';
 import { RealtimeService } from './realtime.service';
 import { Agent } from '../../models/agent.model';
+import { Migration, MigrationStatus } from '../../models/migration.model';
+import { Project } from '../../models/project.model';
 
 describe('RealtimeModule', () => {
   let gateway: RealtimeGateway;
   let service: RealtimeService;
   let mockAgentModel: any;
+  let mockMigrationModel: any;
+  let mockProjectModel: any;
   let mockJwtService: any;
 
   beforeEach(async () => {
     mockAgentModel = {
       update: jest.fn().mockResolvedValue([1]),
+    };
+
+    mockMigrationModel = {
+      findAll: jest.fn().mockResolvedValue([
+        {
+          id: 'mig-001',
+          name: 'Users Table Migration',
+          description: 'Migrating legacy users',
+          source_path: 's3://source/db',
+          target_path: 's3://target/db',
+          status: MigrationStatus.ACTIVE,
+          projectId: 'proj-001',
+          project: { name: 'Core DB Project' },
+          createdAt: new Date(),
+        },
+      ]),
+    };
+
+    mockProjectModel = {
+      findAll: jest.fn().mockResolvedValue([]),
     };
 
     mockJwtService = {
@@ -27,6 +51,14 @@ describe('RealtimeModule', () => {
         {
           provide: getModelToken(Agent),
           useValue: mockAgentModel,
+        },
+        {
+          provide: getModelToken(Migration),
+          useValue: mockMigrationModel,
+        },
+        {
+          provide: getModelToken(Project),
+          useValue: mockProjectModel,
         },
         {
           provide: JwtService,
@@ -44,8 +76,8 @@ describe('RealtimeModule', () => {
     expect(service).toBeDefined();
   });
 
-  describe('agent authentication and 1-to-1 room', () => {
-    it('should authenticate agent socket, join 1-to-1 room, and update agent to connected=true', async () => {
+  describe('agent authentication and pending migrations dispatch', () => {
+    it('should authenticate agent socket, join 1-to-1 room, update DB, and dispatch pending migrations', async () => {
       mockJwtService.verify.mockReturnValue({
         agent_id: 'agent-123',
         organization_id: 'org-456',
@@ -74,6 +106,21 @@ describe('RealtimeModule', () => {
       expect(mockSocket.emit).toHaveBeenCalledWith(
         'agent:connected',
         expect.objectContaining({ agentId: 'agent-123', connected: true }),
+      );
+      expect(mockMigrationModel.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { status: MigrationStatus.ACTIVE },
+        }),
+      );
+      expect(mockSocket.emit).toHaveBeenCalledWith(
+        'backend:command',
+        expect.objectContaining({
+          command: 'PROCESS_MIGRATION',
+          count: 1,
+          migrations: expect.arrayContaining([
+            expect.objectContaining({ id: 'mig-001', name: 'Users Table Migration' }),
+          ]),
+        }),
       );
       expect(gateway.isAgentConnected('agent-123')).toBe(true);
     });

@@ -14,6 +14,8 @@ import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
 import { instrument } from '@socket.io/admin-ui';
 import { Agent } from '../../models/agent.model';
+import { Migration, MigrationStatus } from '../../models/migration.model';
+import { Project } from '../../models/project.model';
 
 interface SocketData {
   agentId?: string;
@@ -46,6 +48,10 @@ export class RealtimeGateway
   constructor(
     @InjectModel(Agent)
     private readonly agentModel: typeof Agent,
+    @InjectModel(Migration)
+    private readonly migrationModel: typeof Migration,
+    @InjectModel(Project)
+    private readonly projectModel: typeof Project,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -205,6 +211,9 @@ export class RealtimeGateway
         });
       }
 
+      // Automatically check and dispatch pending migrations for this agent
+      await this.dispatchPendingMigrations(client, agentId, organizationId);
+
       return true;
     } catch (error: any) {
       this.logger.warn(
@@ -215,6 +224,79 @@ export class RealtimeGateway
         error: error.message,
       });
       return false;
+    }
+  }
+
+  /**
+   * Look up pending/active migrations for this agent and send relevant details
+   */
+  async dispatchPendingMigrations(
+    client: Socket,
+    agentId: string,
+    organizationId?: string,
+  ) {
+    try {
+      const projectWhere: any = {};
+      if (organizationId) {
+        projectWhere.organizationId = organizationId;
+      }
+
+      const pendingMigrations = await this.migrationModel.findAll({
+        where: {
+          status: MigrationStatus.ACTIVE,
+        },
+        include: [
+          {
+            model: Project,
+            where:
+              Object.keys(projectWhere).length > 0 ? projectWhere : undefined,
+            attributes: ['id', 'name', 'organizationId'],
+          },
+        ],
+        order: [['createdAt', 'ASC']],
+      });
+
+      const formattedMigrations = pendingMigrations.map((m) => ({
+        id: m.id,
+        name: m.name,
+        description: m.description,
+        sourcePath: m.source_path,
+        targetPath: m.target_path,
+        status: m.status,
+        projectId: m.projectId,
+        projectName: m.project?.name || null,
+        createdAt: m.createdAt,
+      }));
+
+      const payload = {
+        agentId,
+        organizationId: organizationId || null,
+        count: formattedMigrations.length,
+        migrations: formattedMigrations,
+        message:
+          formattedMigrations.length > 0
+            ? `Found ${formattedMigrations.length} pending migration(s) available for processing.`
+            : 'No pending migrations found at this time.',
+        timestamp: new Date().toISOString(),
+      };
+
+      if (formattedMigrations.length > 0) {
+        this.logger.log(
+          `Found ${formattedMigrations.length} pending migration(s) for agent [${agentId}]. Sending details...`,
+        );
+      } else {
+        this.logger.log(`No pending migrations found for agent [${agentId}].`);
+      }
+
+      // Emit on the unified backend:command channel
+      client.emit('backend:command', {
+        command: 'PROCESS_MIGRATION',
+        ...payload,
+      });
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to check pending migrations for agent [${agentId}]: ${error.message}`,
+      );
     }
   }
 
