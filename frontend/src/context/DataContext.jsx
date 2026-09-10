@@ -202,11 +202,12 @@ export function DataProvider({ children }) {
           icon: 'server',
           severity: 'success',
         })
-        showToast('Agent Online', `Agent "${created.name || agentData.name}" enrolled.`, 'success')
+        if (refetchAgents) refetchAgents()
         return created
       } catch (err) {
-        console.error('Failed to register agent via backend, creating locally:', err)
-        showToast('Creation Note', err?.data?.message || err?.message || 'Saved locally', 'warning')
+        console.error('Failed to register agent via backend:', err)
+        showToast('Creation Failed', err?.data?.message || err?.message || 'Failed to create agent', 'error')
+        throw err
       }
     }
 

@@ -20,23 +20,7 @@ export class AgentSocketService implements OnModuleInit, OnModuleDestroy {
   private currentOrganizationId: string | null = null;
   private isAgentConnected = false;
 
-  async onModuleInit() {
-    const token = process.env.AGENT_TOKEN || process.env.CONNECTION_TOKEN;
-    if (token) {
-      this.logger.log(
-        'AGENT_TOKEN detected in environment. Connecting to backend...',
-      );
-      try {
-        await this.connectToBackend({ token });
-      } catch (err: any) {
-        this.logger.error(`Initial auto-connection failed: ${err.message}`);
-      }
-    } else {
-      this.logger.log(
-        'Execution agent started without AGENT_TOKEN. Ready to connect via POST /connect or connectToBackend().',
-      );
-    }
-  }
+  onModuleInit() {}
 
   onModuleDestroy() {
     this.disconnect();

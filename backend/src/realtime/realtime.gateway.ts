@@ -13,7 +13,7 @@ import { InjectModel } from '@nestjs/sequelize';
 import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
 import { instrument } from '@socket.io/admin-ui';
-import { Agent } from '../../models/agent.model';
+import { Agent, AgentStatus } from '../../models/agent.model';
 import { Migration, MigrationStatus } from '../../models/migration.model';
 import { Project } from '../../models/project.model';
 
@@ -103,7 +103,7 @@ export class RealtimeGateway
           try {
             await this.agentModel.update(
               {
-                connected: false,
+                status: AgentStatus.ACTIVE,
                 lastHeartbeatAt: new Date(),
               } as any,
               { where: { id: agentId } },
@@ -117,7 +117,7 @@ export class RealtimeGateway
             if (orgId && this.server) {
               this.server.to(`org:${orgId}`).emit('agent:status', {
                 agentId,
-                connected: false,
+                status: AgentStatus.ACTIVE,
                 disconnectedAt: new Date().toISOString(),
               });
             }
@@ -184,7 +184,7 @@ export class RealtimeGateway
       // Update agent in DB
       await this.agentModel.update(
         {
-          connected: true,
+          status: AgentStatus.CONNECTED,
           lastHeartbeatAt: new Date(),
         } as any,
         { where: { id: agentId } },
@@ -197,7 +197,7 @@ export class RealtimeGateway
       // Acknowledge back to the agent (1-to-1)
       client.emit('agent:connected', {
         agentId,
-        connected: true,
+        connected: AgentStatus.CONNECTED,
         message: '1-to-1 socket connection established with backend',
         timestamp: new Date().toISOString(),
       });
@@ -206,7 +206,7 @@ export class RealtimeGateway
       if (organizationId && this.server) {
         this.server.to(`org:${organizationId}`).emit('agent:status', {
           agentId,
-          connected: true,
+          connected: AgentStatus.CONNECTED,
           connectedAt: new Date().toISOString(),
         });
       }
@@ -299,18 +299,6 @@ export class RealtimeGateway
       );
     }
   }
-
-  // @SubscribeMessage('agent:authenticate')
-  // async handleExplicitAuth(
-  //   @ConnectedSocket() client: Socket,
-  //   @MessageBody() data: { token: string },
-  // ) {
-  //   if (!data?.token) {
-  //     return { success: false, message: 'Token is required' };
-  //   }
-  //   const success = await this.authenticateAgentSocket(client, data.token);
-  //   return { success };
-  // }
 
   @SubscribeMessage('agent:heartbeat')
   async handleAgentHeartbeat(
