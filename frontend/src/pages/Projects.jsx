@@ -5,33 +5,40 @@ import { useData } from '../context/DataContext'
 import { EmptyState } from '../components/ui/EmptyState'
 
 export default function Projects() {
-  const { projects, addProject } = useData()
+  const { projects, addProject, isProjectsLoading } = useData()
   const [filterEnv, setFilterEnv] = useState('ALL')
   const [searchQuery, setSearchQuery] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [environment, setEnvironment] = useState('Production')
 
-  const filteredProjects = projects.filter((p) => {
-    const matchEnv = filterEnv === 'ALL' || p.environment.toUpperCase() === filterEnv
+  const filteredProjects = (projects || []).filter((p) => {
+    const envUpper = (p.environment || '').toUpperCase()
+    const matchEnv = filterEnv === 'ALL' || envUpper.includes(filterEnv)
     const matchSearch =
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchQuery.toLowerCase())
+      (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.description || '').toLowerCase().includes(searchQuery.toLowerCase())
     return matchEnv && matchSearch
   })
 
-  const handleCreate = (e) => {
+  const handleCreate = async (e) => {
     e.preventDefault()
     if (!name.trim()) return
-    addProject({
-      name: name.trim(),
-      description: description.trim() || 'Custom data migration group.',
-      environment,
-    })
-    setName('')
-    setDescription('')
-    setIsModalOpen(false)
+    setIsCreating(true)
+    try {
+      await addProject({
+        name: name.trim(),
+        description: description.trim() || 'Custom data migration group.',
+        environment,
+      })
+      setName('')
+      setDescription('')
+      setIsModalOpen(false)
+    } finally {
+      setIsCreating(false)
+    }
   }
 
   return (
@@ -214,9 +221,17 @@ export default function Projects() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                  disabled={isCreating}
+                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white shadow-sm flex items-center gap-1.5 cursor-pointer"
                 >
-                  Create Project
+                  {isCreating ? (
+                    <>
+                      <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Creating...</span>
+                    </>
+                  ) : (
+                    <span>Create Project</span>
+                  )}
                 </button>
               </div>
             </form>

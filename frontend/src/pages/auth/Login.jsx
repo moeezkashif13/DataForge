@@ -1,30 +1,41 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { ArrowRight, KeyRound } from 'lucide-react'
+import { ArrowRight, KeyRound, AlertCircle } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
+import { useLoginMutation } from '../../store/api/authApi'
 
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(true)
-  const [isLoading, setIsLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
+  const [login, { isLoading }] = useLoginMutation()
   const navigate = useNavigate()
   const { showToast } = useToast()
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    setIsLoading(true)
-    setTimeout(() => {
-      setIsLoading(false)
-      showToast('Signed in', 'Welcome back, Abdul Moeez', 'success')
+    setErrorMsg('')
+    try {
+      const res = await login({ email: email.trim(), password }).unwrap()
+      const displayName = res?.user?.name || res?.user?.firstName || res?.user?.email || 'User'
+      showToast('Signed in', `Welcome back, ${displayName}`, 'success')
       navigate('/dashboard')
-    }, 600)
+    } catch (err) {
+      const msg =
+        err?.data?.message ||
+        err?.data?.error ||
+        err?.message ||
+        'Invalid email or password. Please verify your credentials.'
+      setErrorMsg(typeof msg === 'string' ? msg : JSON.stringify(msg))
+      showToast('Authentication Failed', typeof msg === 'string' ? msg : 'Please check your credentials', 'error')
+    }
   }
 
   const fillDemo = () => {
     setEmail('admin@company.com')
-    setPassword('••••••••••••')
-    showToast('Demo Credentials Filled', 'Click "Sign in" to continue', 'info')
+    setPassword('Admin123456!')
+    showToast('Demo Credentials Filled', 'Click "Sign in" to test', 'info')
   }
 
   return (
@@ -37,6 +48,13 @@ export default function Login() {
           Sign in to your DataRelay workspace.
         </p>
       </div>
+
+      {errorMsg && (
+        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

@@ -1,4 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
+import { selectIsAuthenticated, selectOrganizationId, setCredentials } from '../store/slices/authSlice'
+import { useGetProjectsQuery, useCreateProjectMutation } from '../store/api/projectsApi'
 import {
   initialWorkspaces,
   initialProjects,
@@ -66,25 +69,81 @@ export function DataProvider({ children }) {
   }
 
   // Projects
-  const [projects, setProjects] = useState(initialProjects)
+  const dispatch = useDispatch()
+  const isAuthenticated = useSelector(selectIsAuthenticated)
+  const organizationId = useSelector(selectOrganizationId)
 
-  const addProject = (projectData) => {
+  const {
+    data: apiProjects,
+    isLoading: isProjectsLoading,
+    refetch: refetchProjects,
+  } = useGetProjectsQuery(organizationId || undefined, {
+    skip: !isAuthenticated,
+  })
+  const [createProjectMutation] = useCreateProjectMutation()
+
+  useEffect(() => {
+    if (apiProjects?.organizationId && !organizationId) {
+      dispatch(setCredentials({ organizationId: apiProjects.organizationId }))
+    }
+  }, [apiProjects, organizationId, dispatch])
+
+  const [localProjects, setLocalProjects] = useState([])
+  const projects =
+    isAuthenticated && apiProjects
+      ? apiProjects
+      : localProjects.length
+        ? localProjects
+        : initialProjects
+
+  const addProject = async (projectData) => {
+    const activeOrgId =
+      organizationId ||
+      apiProjects?.organizationId ||
+      apiProjects?.[0]?.organizationId
+
+    if (isAuthenticated && activeOrgId) {
+      try {
+        const res = await createProjectMutation({
+          organizationId: activeOrgId,
+          name: projectData.name,
+          description: projectData.description,
+          userIds: [],
+        }).unwrap()
+
+        addActivity({
+          type: 'PROJECT_CREATED',
+          title: 'Project created',
+          detail: `Project "${projectData.name}" initialized in ${projectData.environment || 'Production (Dummy)'}`,
+          user: 'Current User',
+          icon: 'folder',
+          severity: 'info',
+        })
+        showToast('Project Created', `Project "${projectData.name}" created successfully.`, 'success')
+        return res
+      } catch (err) {
+        console.error('API create project error:', err)
+        showToast('Project Creation Failed', err?.data?.message || 'Error creating project', 'error')
+      }
+    }
+
     const newProj = {
       id: `proj-${Date.now()}`,
       slug: projectData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      migrationCount: 0,
-      agentCount: 1,
-      lastActivity: 'Just now',
+      migrationCount: '0 (Dummy)',
+      agentCount: '1 (Dummy)',
+      lastActivity: 'Just now (Dummy)',
       status: 'ACTIVE',
+      environment: projectData.environment || 'Production (Dummy)',
       createdAt: new Date().toISOString(),
       ...projectData,
     }
-    setProjects((prev) => [newProj, ...prev])
+    setLocalProjects((prev) => [newProj, ...prev])
     addActivity({
       type: 'PROJECT_CREATED',
       title: 'Project created',
       detail: `Project "${newProj.name}" initialized in ${newProj.environment}`,
-      user: 'Abdul Moeez',
+      user: 'Current User',
       icon: 'folder',
       severity: 'info',
     })
@@ -380,6 +439,8 @@ export function DataProvider({ children }) {
         switchWorkspace,
         createWorkspace,
         projects,
+        isProjectsLoading,
+        refetchProjects,
         addProject,
         agents,
         registerAgent,

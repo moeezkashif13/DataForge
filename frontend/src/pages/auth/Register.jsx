@@ -1,25 +1,50 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, AlertCircle } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
+import { useRegisterOrganizationMutation } from '../../store/api/authApi'
 
 export default function Register() {
-  const [name, setName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [org, setOrg] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
+
+  const [registerOrganization, { isLoading }] = useRegisterOrganizationMutation()
   const navigate = useNavigate()
   const { showToast } = useToast()
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    setIsLoading(true)
-    setTimeout(() => {
-      setIsLoading(false)
-      showToast('Workspace Created', `Welcome to DataRelay, ${org || 'Acme'}`, 'success')
+    setErrorMsg('')
+
+    if (password.length < 8) {
+      setErrorMsg('Password must be at least 8 characters long.')
+      return
+    }
+
+    try {
+      await registerOrganization({
+        organizationName: org.trim(),
+        userFirstName: firstName.trim(),
+        userLastName: lastName.trim(),
+        userEmail: email.trim(),
+        userPassword: password,
+      }).unwrap()
+
+      showToast('Workspace Created', `Welcome to DataRelay, ${org}!`, 'success')
       navigate('/dashboard')
-    }, 700)
+    } catch (err) {
+      const msg =
+        err?.data?.message ||
+        err?.data?.error ||
+        err?.message ||
+        'Failed to create workspace. Please try again.'
+      setErrorMsg(typeof msg === 'string' ? msg : JSON.stringify(msg))
+      showToast('Registration Failed', typeof msg === 'string' ? msg : 'Check registration fields', 'error')
+    }
   }
 
   return (
@@ -33,17 +58,53 @@ export default function Register() {
         </p>
       </div>
 
+      {errorMsg && (
+        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-3.5">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              First name
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Abdul"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="w-full px-3.5 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-slate-900 dark:text-slate-100 placeholder-slate-400 transition-all"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              Last name
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Moeez"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="w-full px-3.5 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-slate-900 dark:text-slate-100 placeholder-slate-400 transition-all"
+            />
+          </div>
+        </div>
+
         <div>
           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            Full name
+            Organization name
           </label>
           <input
             type="text"
             required
-            placeholder="Abdul Moeez"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            placeholder="Acme Inc."
+            value={org}
+            onChange={(e) => setOrg(e.target.value)}
             className="w-full px-3.5 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-slate-900 dark:text-slate-100 placeholder-slate-400 transition-all"
           />
         </div>
@@ -72,20 +133,6 @@ export default function Register() {
             placeholder="Minimum 8 characters"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-3.5 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-slate-900 dark:text-slate-100 placeholder-slate-400 transition-all"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            Organization
-          </label>
-          <input
-            type="text"
-            required
-            placeholder="Acme Inc."
-            value={org}
-            onChange={(e) => setOrg(e.target.value)}
             className="w-full px-3.5 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-slate-900 dark:text-slate-100 placeholder-slate-400 transition-all"
           />
         </div>

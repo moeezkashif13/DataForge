@@ -10,6 +10,7 @@ import { OrganizationUser } from '../../models/organization-user.model';
 import { OrganizationInvitation } from '../../models/organization-invitation.model';
 import { Project } from '../../models/project.model';
 import { ProjectUser } from '../../models/project-user.model';
+import { Migration } from '../../models/migration.model';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ProjectUser } from '../../models/project-user.model';
       OrganizationInvitation,
       Project,
       ProjectUser,
+      Migration,
     ]),
   ],
   controllers: [OrganizationController, ProjectController],

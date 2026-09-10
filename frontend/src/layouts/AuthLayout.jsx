@@ -1,7 +1,15 @@
-import { Outlet, Link } from 'react-router'
+import { Outlet, Link, Navigate } from 'react-router'
+import { useSelector } from 'react-redux'
+import { selectIsAuthenticated } from '../store/slices/authSlice'
 import { ShieldCheck } from 'lucide-react'
 
 export default function AuthLayout() {
+  const isAuthenticated = useSelector(selectIsAuthenticated)
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />
+  }
+
   return (
     <div className="min-h-screen flex flex-col justify-center items-center px-4 py-12 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 relative overflow-hidden">
       {/* Subtle technical background grid */}

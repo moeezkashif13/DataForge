@@ -25,9 +25,15 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
+import { useSelector } from 'react-redux'
+import { selectCurrentUser } from '../store/slices/authSlice'
+import { useLogoutMutation } from '../store/api/authApi'
 
 export default function AppShell() {
   const { theme, toggleTheme, workspaces, currentWorkspace, switchWorkspace, createWorkspace, agents } = useData()
+  const currentUser = useSelector(selectCurrentUser)
+  const [logout] = useLogoutMutation()
+
   const [wsDropdownOpen, setWsDropdownOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -36,6 +42,29 @@ export default function AppShell() {
   const [newWsEnv, setNewWsEnv] = useState('Production')
   const location = useLocation()
   const navigate = useNavigate()
+
+  const displayName =
+    currentUser?.name ||
+    (currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim() : null) ||
+    'Abdul Moeez'
+  const displayEmail = currentUser?.email || 'admin@company.com'
+  const avatarInitials =
+    displayName
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((n) => n[0].toUpperCase())
+      .join('') || 'AM'
+
+  const handleSignOut = async () => {
+    setUserMenuOpen(false)
+    try {
+      await logout().unwrap()
+    } catch {
+      // authSlice will clean up state regardless
+    }
+    navigate('/login')
+  }
 
   const wsRef = useRef(null)
   const userMenuRef = useRef(null)
@@ -269,12 +298,12 @@ export default function AppShell() {
           className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-colors text-left"
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
-              AM
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs uppercase">
+              {avatarInitials}
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">Abdul Moeez</p>
-              <p className="text-[10px] text-slate-400 truncate">admin@company.com</p>
+              <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{displayName}</p>
+              <p className="text-[10px] text-slate-400 truncate font-mono">{displayEmail}</p>
             </div>
           </div>
           <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
@@ -307,11 +336,8 @@ export default function AppShell() {
             <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
             <button
               type="button"
-              onClick={() => {
-                setUserMenuOpen(false)
-                navigate('/login')
-              }}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors text-left font-medium"
+              onClick={handleSignOut}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors text-left font-medium cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
               Sign out

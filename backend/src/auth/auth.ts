@@ -27,6 +27,16 @@ export const getSessionCookieOptions = () => ({
 export const auth = betterAuth({
   appName: 'DataForge',
   basePath: AUTH_BASE_PATH,
+  baseURL: process.env.BETTER_AUTH_URL || `http://localhost:${process.env.PORT || 3000}`,
+  trustedOrigins: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
+    ...(process.env.BETTER_AUTH_TRUSTED_ORIGINS
+      ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(',').map((o) => o.trim())
+      : []),
+  ],
   secret: process.env.AUTH_SECRET,
   plugins: [bearer()],
 

@@ -30,7 +30,13 @@ import Billing from './pages/Billing'
 import Settings from './pages/Settings'
 import NotFound from './pages/NotFound'
 
+import ProtectedRoute from './components/auth/ProtectedRoute'
+import { useGetSessionQuery } from './store/api/authApi'
+
 export default function App() {
+  // Query Better Auth session on initial mount to restore user/token
+  useGetSessionQuery()
+
   return (
     <ToastProvider>
       <DataProvider>
@@ -54,7 +60,14 @@ export default function App() {
             </Route>
 
             {/* Authenticated Application Control Plane */}
-            <Route path="/" element={<AppShell />}>
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <AppShell />
+                </ProtectedRoute>
+              }
+            >
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
 
