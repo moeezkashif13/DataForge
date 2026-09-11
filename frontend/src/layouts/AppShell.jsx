@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate, Link } from 'react-router'
+import { useState, useRef, useEffect } from "react";
+import { NavLink, Outlet, useLocation, useNavigate, Link } from "react-router";
 import {
   LayoutDashboard,
   Folder,
@@ -23,89 +23,99 @@ import {
   LogOut,
   Sliders,
   ExternalLink,
-} from 'lucide-react'
-import { useData } from '../context/DataContext'
-import { useSelector } from 'react-redux'
-import { selectCurrentUser } from '../store/slices/authSlice'
-import { useLogoutMutation } from '../store/api/authApi'
+} from "lucide-react";
+import { useData } from "../context/DataContext";
+import { useSelector } from "react-redux";
+import { selectCurrentUser } from "../store/slices/authSlice";
+import { useLogoutMutation } from "../store/api/authApi";
 
 export default function AppShell() {
-  const { theme, toggleTheme, workspaces, currentWorkspace, switchWorkspace, createWorkspace, agents } = useData()
-  const currentUser = useSelector(selectCurrentUser)
-  const [logout] = useLogoutMutation()
+  const {
+    theme,
+    toggleTheme,
+    workspaces,
+    currentWorkspace,
+    switchWorkspace,
+    createWorkspace,
+    agents,
+  } = useData();
+  const currentUser = useSelector(selectCurrentUser);
+  const [logout] = useLogoutMutation();
 
-  const [wsDropdownOpen, setWsDropdownOpen] = useState(false)
-  const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [createWsModalOpen, setCreateWsModalOpen] = useState(false)
-  const [newWsName, setNewWsName] = useState('')
-  const [newWsEnv, setNewWsEnv] = useState('Production')
-  const location = useLocation()
-  const navigate = useNavigate()
+  const [wsDropdownOpen, setWsDropdownOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [createWsModalOpen, setCreateWsModalOpen] = useState(false);
+  const [newWsName, setNewWsName] = useState("");
+  const [newWsEnv, setNewWsEnv] = useState("Production");
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const displayName =
     currentUser?.name ||
-    (currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim() : null) ||
-    'Abdul Moeez'
-  const displayEmail = currentUser?.email || 'admin@company.com'
+    (currentUser?.firstName
+      ? `${currentUser.firstName} ${currentUser.lastName || ""}`.trim()
+      : null) ||
+    "Abdul Moeez";
+  const displayEmail = currentUser?.email || "admin@company.com";
   const avatarInitials =
     displayName
-      .split(' ')
+      .split(" ")
       .filter(Boolean)
       .slice(0, 2)
       .map((n) => n[0].toUpperCase())
-      .join('') || 'AM'
+      .join("") || "AM";
 
   const handleSignOut = async () => {
-    setUserMenuOpen(false)
+    setUserMenuOpen(false);
     try {
-      await logout().unwrap()
+      await logout().unwrap();
     } catch {
       // authSlice will clean up state regardless
     }
-    navigate('/login')
-  }
+    navigate("/login");
+  };
 
-  const wsRef = useRef(null)
-  const userMenuRef = useRef(null)
+  const wsRef = useRef(null);
+  const userMenuRef = useRef(null);
 
   // Close dropdowns on outside click
   useEffect(() => {
     function handleClickOutside(event) {
       if (wsRef.current && !wsRef.current.contains(event.target)) {
-        setWsDropdownOpen(false)
+        setWsDropdownOpen(false);
       }
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
-        setUserMenuOpen(false)
+        setUserMenuOpen(false);
       }
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Close mobile drawer on route change
   useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [location.pathname])
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
-  const onlineAgents = agents.filter((a) => a.status === 'ONLINE').length
-  const totalAgents = agents.length
+  const onlineAgents = agents.filter((a) => a.status === "ONLINE").length;
+  const totalAgents = agents.length;
 
   const navItemClass = ({ isActive }) =>
     `group flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
       isActive
-        ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold shadow-xs'
-        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-800/60'
-    }`
+        ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold shadow-xs"
+        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-800/60"
+    }`;
 
   const handleCreateWorkspace = (e) => {
-    e.preventDefault()
-    if (!newWsName.trim()) return
-    createWorkspace(newWsName.trim(), newWsEnv)
-    setNewWsName('')
-    setCreateWsModalOpen(false)
-    setWsDropdownOpen(false)
-  }
+    e.preventDefault();
+    if (!newWsName.trim()) return;
+    createWorkspace(newWsName.trim(), newWsEnv);
+    setNewWsName("");
+    setCreateWsModalOpen(false);
+    setWsDropdownOpen(false);
+  };
 
   const sidebarContent = (
     <div className="flex flex-col h-full">
@@ -113,8 +123,18 @@ export default function AppShell() {
       <div className="p-4 border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between">
         <Link to="/dashboard" className="flex items-center gap-2.5 group">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform">
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            <svg
+              className="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+              />
             </svg>
           </div>
           <div className="flex flex-col">
@@ -132,7 +152,10 @@ export default function AppShell() {
       </div>
 
       {/* Workspace Selector */}
-      <div className="p-3 border-b border-slate-200/80 dark:border-slate-800/80 relative" ref={wsRef}>
+      <div
+        className="p-3 border-b border-slate-200/80 dark:border-slate-800/80 relative"
+        ref={wsRef}
+      >
         <button
           type="button"
           onClick={() => setWsDropdownOpen(!wsDropdownOpen)}
@@ -160,36 +183,40 @@ export default function AppShell() {
             </p>
             <div className="space-y-0.5">
               {workspaces.map((ws) => {
-                const isSelected = ws.id === currentWorkspace.id
+                const isSelected = ws.id === currentWorkspace.id;
                 return (
                   <button
                     key={ws.id}
                     type="button"
                     onClick={() => {
-                      switchWorkspace(ws.id)
-                      setWsDropdownOpen(false)
+                      switchWorkspace(ws.id);
+                      setWsDropdownOpen(false);
                     }}
                     className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-colors ${
                       isSelected
-                        ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-semibold'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-semibold"
+                        : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                     }`}
                   >
                     <div>
                       <p className="text-xs font-medium">{ws.name}</p>
-                      <p className="text-[10px] text-slate-400">{ws.environment}</p>
+                      <p className="text-[10px] text-slate-400">
+                        {ws.environment}
+                      </p>
                     </div>
-                    {isSelected && <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />}
+                    {isSelected && (
+                      <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    )}
                   </button>
-                )
+                );
               })}
             </div>
             <div className="pt-1.5 mt-1.5 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => {
-                  setCreateWsModalOpen(true)
-                  setWsDropdownOpen(false)
+                  setCreateWsModalOpen(true);
+                  setWsDropdownOpen(false);
                 }}
                 className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium text-xs"
               >
@@ -230,10 +257,10 @@ export default function AppShell() {
                 </span>
               </div>
             </NavLink>
-            <NavLink to="/connections" className={navItemClass}>
+            {/* <NavLink to="/connections" className={navItemClass}>
               <Database className="w-4 h-4 shrink-0" />
               <span>Connections</span>
-            </NavLink>
+            </NavLink> */}
           </nav>
         </div>
 
@@ -283,7 +310,9 @@ export default function AppShell() {
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             Agent Network
           </span>
-          <span className="font-mono text-[11px] text-slate-500">{onlineAgents}/{totalAgents} Online</span>
+          <span className="font-mono text-[11px] text-slate-500">
+            {onlineAgents}/{totalAgents} Online
+          </span>
         </div>
         <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
           Customer Data Plane secure inside your infrastructure.
@@ -291,7 +320,10 @@ export default function AppShell() {
       </div>
 
       {/* User profile footer */}
-      <div className="p-3 border-t border-slate-200/80 dark:border-slate-800/80 relative" ref={userMenuRef}>
+      <div
+        className="p-3 border-t border-slate-200/80 dark:border-slate-800/80 relative"
+        ref={userMenuRef}
+      >
         <button
           type="button"
           onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -302,8 +334,12 @@ export default function AppShell() {
               {avatarInitials}
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{displayName}</p>
-              <p className="text-[10px] text-slate-400 truncate font-mono">{displayEmail}</p>
+              <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+                {displayName}
+              </p>
+              <p className="text-[10px] text-slate-400 truncate font-mono">
+                {displayEmail}
+              </p>
             </div>
           </div>
           <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
@@ -323,14 +359,18 @@ export default function AppShell() {
             <button
               type="button"
               onClick={() => {
-                toggleTheme()
-                setUserMenuOpen(false)
+                toggleTheme();
+                setUserMenuOpen(false);
               }}
               className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left"
             >
               <span className="flex items-center gap-2">
-                {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-                Theme: {theme === 'dark' ? 'Dark' : 'Light'}
+                {theme === "dark" ? (
+                  <Sun className="w-3.5 h-3.5" />
+                ) : (
+                  <Moon className="w-3.5 h-3.5" />
+                )}
+                Theme: {theme === "dark" ? "Dark" : "Light"}
               </span>
             </button>
             <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
@@ -346,7 +386,7 @@ export default function AppShell() {
         )}
       </div>
     </div>
-  )
+  );
 
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased font-sans">
@@ -394,7 +434,9 @@ export default function AppShell() {
             {/* Architecture guarantee banner */}
             <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
               <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-              <span className="font-mono text-[11px]">Zero-Trust Data Plane · Data remains in customer VPC</span>
+              <span className="font-mono text-[11px]">
+                Zero-Trust Data Plane · Data remains in customer VPC
+              </span>
             </div>
           </div>
 
@@ -419,7 +461,11 @@ export default function AppShell() {
               className="p-2 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               aria-label="Toggle theme"
             >
-              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              {theme === "dark" ? (
+                <Sun className="w-4 h-4" />
+              ) : (
+                <Moon className="w-4 h-4" />
+              )}
             </button>
 
             {/* Create Migration CTA */}
@@ -443,9 +489,12 @@ export default function AppShell() {
       {createWsModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
           <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">Create Workspace</h3>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Create Workspace
+            </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Workspaces isolate configurations, agents, and migration pipelines.
+              Workspaces isolate configurations, agents, and migration
+              pipelines.
             </p>
             <form onSubmit={handleCreateWorkspace} className="mt-4 space-y-4">
               <div>
@@ -495,5 +544,5 @@ export default function AppShell() {
         </div>
       )}
     </div>
-  )
+  );
 }

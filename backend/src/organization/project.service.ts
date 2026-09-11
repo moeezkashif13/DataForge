@@ -208,4 +208,110 @@ export class ProjectService {
       projects: mappedProjects,
     };
   }
+
+  async getProjectDetails(projectId: string, userId: string) {
+    if (!userId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    const project = await this.projectModel.findByPk(projectId, {
+      include: [
+        {
+          model: Organization,
+          attributes: ['id', 'name'],
+        },
+        {
+          model: Migration,
+          required: false,
+        },
+        {
+          model: ProjectUser,
+          include: [
+            {
+              model: User,
+              attributes: ['id', 'name', 'email'],
+            },
+          ],
+          required: false,
+        },
+      ],
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Project with ID ${projectId} not found`);
+    }
+
+    const orgMembership = await this.organizationUserModel.findOne({
+      where: {
+        userId,
+        organizationId: project.organizationId,
+      },
+    });
+
+    const projectMembership = await this.projectUserModel.findOne({
+      where: {
+        projectId,
+        userId,
+      },
+    });
+
+    if (!orgMembership && !projectMembership) {
+      throw new ForbiddenException(
+        'You do not have permission to view this project',
+      );
+    }
+
+    const data = project.get({ plain: true });
+    const migrationsList = Array.isArray(data.migrations)
+      ? data.migrations.map((m: any) => {
+          const sourceLabel = m.source_path || 'production.customers (Dummy)';
+          const targetLabel = m.target_path || 'analytics.customers_v2 (Dummy)';
+          return {
+            id: m.id,
+            name: m.name || 'Customer Records Sync (Dummy)',
+            description:
+              m.description || 'Customer records sync pipeline (Dummy)',
+            status: (m.status || 'RUNNING').toUpperCase(),
+            source_path: m.source_path,
+            target_path: m.target_path,
+            sourceTargetLabel: `${sourceLabel} → ${targetLabel}`,
+            progress: 78.2,
+            createdAt: m.createdAt,
+            updatedAt: m.updatedAt,
+          };
+        })
+      : [];
+
+    return {
+      id: data.id,
+      name: data.name,
+      slug:
+        data.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') ||
+        'project-slug (Dummy)',
+      description: data.description || 'Project description (Dummy)',
+      organizationId: data.organizationId,
+      organizationName:
+        data.organization?.name || 'Primary Organization (Dummy)',
+      status: (data.status || 'active').toUpperCase(),
+      environment: 'Production (Dummy)',
+      boundary: 'Customer VPC Strict (Dummy)',
+      migrationCount: migrationsList.length,
+      agentCount: '1 (Dummy)',
+      migrations: migrationsList,
+
+      users: Array.isArray(data.projectUsers)
+        ? data.projectUsers.map((pu: any) => ({
+            id: pu.id,
+            userId: pu.userId,
+            role: pu.role || 'member',
+            name: pu.user?.name || 'Team Member (Dummy)',
+            email: pu.user?.email || 'member@example.com (Dummy)',
+            joinedAt: pu.createdAt,
+          }))
+        : [],
+
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+    };
+  }
 }

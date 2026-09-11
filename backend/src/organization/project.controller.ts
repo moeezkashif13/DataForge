@@ -4,6 +4,7 @@ import {
   Get,
   HttpException,
   HttpStatus,
+  Param,
   Post,
   Query,
   UnauthorizedException,
@@ -32,6 +33,32 @@ export class ProjectController {
         statusCode: HttpStatus.OK,
         organizationId: result.organizationId,
         projects: result.projects,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Internal server error',
+        error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Get(':id')
+  async getProjectById(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    if (!user?.id) {
+      throw new UnauthorizedException(
+        'Authentication required to retrieve project details',
+      );
+    }
+
+    try {
+      const project = await this.projectService.getProjectDetails(id, user.id);
+
+      return {
+        statusCode: HttpStatus.OK,
+        project,
       };
     } catch (error: any) {
       throw new HttpException(

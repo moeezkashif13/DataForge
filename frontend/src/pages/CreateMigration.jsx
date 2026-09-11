@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router'
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
 import {
   ArrowRight,
   ArrowLeft,
@@ -12,164 +12,184 @@ import {
   Trash2,
   Sparkles,
   Info,
-} from 'lucide-react'
-import { useData } from '../context/DataContext'
-import { Breadcrumbs } from '../components/ui/Breadcrumbs'
-import { initialFieldMappings } from '../types/mockData'
-import { useToast } from '../context/ToastContext'
+} from "lucide-react";
+import { useGetProjectsQuery } from "../store/api/projectsApi";
+import { useGetAgentsQuery } from "../store/api/agentsApi";
+import { useCreateMigrationMutation } from "../store/api/migrationsApi";
+import { Breadcrumbs } from "../components/ui/Breadcrumbs";
+import {
+  initialFieldMappings,
+  initialConnections,
+  initialAgents,
+  initialProjects,
+} from "../types/mockData";
+import { useToast } from "../context/ToastContext";
 
 export default function CreateMigration() {
-  const { projects, connections, agents, addMigration } = useData()
-  const navigate = useNavigate()
-  const { showToast } = useToast()
+  const { data: apiProjects = [] } = useGetProjectsQuery();
+  const projects = apiProjects.length > 0 ? apiProjects : initialProjects;
+  const { data: apiAgents = [] } = useGetAgentsQuery();
+  const agents = apiAgents.length > 0 ? apiAgents : initialAgents;
+  const connections = initialConnections;
+  const [createMigration, { isLoading: isSubmitting }] =
+    useCreateMigrationMutation();
 
-  const [step, setStep] = useState(1)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+
+  const [step, setStep] = useState(1);
 
   // Step 1: Basic details
-  const [name, setName] = useState('Customer Data Migration')
-  const [projectId, setProjectId] = useState(projects[0]?.id || '')
-  const [description, setDescription] = useState('Production customer records sync with field sanitization.')
+  const [name, setName] = useState("Customer Data Migration");
+  const [projectId, setProjectId] = useState(projects[0]?.id || "");
+  const [description, setDescription] = useState(
+    "Production customer records sync with field sanitization.",
+  );
 
   useEffect(() => {
     if (!projectId && projects.length > 0) {
-      setProjectId(projects[0].id)
+      setProjectId(projects[0].id);
     }
-  }, [projects, projectId])
+  }, [projects, projectId]);
 
   // Step 2: Source
-  const [sourceType, setSourceType] = useState('PostgreSQL')
-  const [sourceConnId, setSourceConnId] = useState(connections[0]?.id || '')
-  const [sourceDatabase, setSourceDatabase] = useState('production')
-  const [sourceSchema, setSourceSchema] = useState('public')
-  const [sourceTable, setSourceTable] = useState('customers')
-  const [sourceCsvPath, setSourceCsvPath] = useState('/var/data/exports/customers_dump.csv')
-  const [sourceTestStatus, setSourceTestStatus] = useState(null)
+  const [sourceType, setSourceType] = useState("PostgreSQL");
+  const [sourceConnId, setSourceConnId] = useState(connections[0]?.id || "");
+  const [sourceDatabase, setSourceDatabase] = useState("production");
+  const [sourceSchema, setSourceSchema] = useState("public");
+  const [sourceTable, setSourceTable] = useState("customers");
+  const [sourceCsvPath, setSourceCsvPath] = useState(
+    "/var/data/exports/customers_dump.csv",
+  );
+  const [sourceTestStatus, setSourceTestStatus] = useState(null);
 
   // Step 3: Target
-  const [targetType, setTargetType] = useState('PostgreSQL')
-  const [targetConnId, setTargetConnId] = useState(connections[1]?.id || '')
-  const [targetDatabase, setTargetDatabase] = useState('analytics')
-  const [targetSchema, setTargetSchema] = useState('public')
-  const [targetTable, setTargetTable] = useState('customers_v2')
-  const [targetTestStatus, setTargetTestStatus] = useState(null)
+  const [targetType, setTargetType] = useState("PostgreSQL");
+  const [targetConnId, setTargetConnId] = useState(connections[1]?.id || "");
+  const [targetDatabase, setTargetDatabase] = useState("analytics");
+  const [targetSchema, setTargetSchema] = useState("public");
+  const [targetTable, setTargetTable] = useState("customers_v2");
+  const [targetTestStatus, setTargetTestStatus] = useState(null);
 
   // Step 4: Field Mappings
-  const [mappings, setMappings] = useState(initialFieldMappings)
+  const [mappings, setMappings] = useState(initialFieldMappings);
 
   // Step 5: Validation & Agent
-  const [selectedAgentId, setSelectedAgentId] = useState(agents[0]?.id || '')
-  const [batchSize, setBatchSize] = useState(2000)
-  const [retryCount, setRetryCount] = useState(3)
+  const [selectedAgentId, setSelectedAgentId] = useState(agents[0]?.id || "");
+  const [batchSize, setBatchSize] = useState(2000);
+  const [retryCount, setRetryCount] = useState(3);
 
   const steps = [
-    { num: 1, title: 'Basic Details' },
-    { num: 2, title: 'Source' },
-    { num: 3, title: 'Target' },
-    { num: 4, title: 'Field Mapping' },
-    { num: 5, title: 'Validation' },
-    { num: 6, title: 'Review' },
-  ]
+    { num: 1, title: "Basic Details" },
+    { num: 2, title: "Source" },
+    { num: 3, title: "Target" },
+    { num: 4, title: "Field Mapping" },
+    { num: 5, title: "Validation" },
+    { num: 6, title: "Review" },
+  ];
 
   const testSource = () => {
-    setSourceTestStatus('testing')
+    setSourceTestStatus("testing");
     setTimeout(() => {
-      setSourceTestStatus('success')
-      showToast('Source Probe OK', 'Connected to internal database in 1.4ms via Agent.', 'success')
-    }, 600)
-  }
+      setSourceTestStatus("success");
+      showToast(
+        "Source Probe OK",
+        "Connected to internal database in 1.4ms via Agent.",
+        "success",
+      );
+    }, 600);
+  };
 
   const testTarget = () => {
-    setTargetTestStatus('testing')
+    setTargetTestStatus("testing");
     setTimeout(() => {
-      setTargetTestStatus('success')
-      showToast('Target Probe OK', 'Target schema table write permissions verified.', 'success')
-    }, 600)
-  }
+      setTargetTestStatus("success");
+      showToast(
+        "Target Probe OK",
+        "Target schema table write permissions verified.",
+        "success",
+      );
+    }, 600);
+  };
 
   const handleAddMapping = () => {
     const newM = {
       id: `m-${Date.now()}`,
-      sourceField: 'new_field',
-      targetField: 'new_column',
-      transformation: 'None',
+      sourceField: "new_field",
+      targetField: "new_column",
+      transformation: "None",
       required: false,
-      type: 'VARCHAR(255)',
-    }
-    setMappings([...mappings, newM])
-  }
+      type: "VARCHAR(255)",
+    };
+    setMappings([...mappings, newM]);
+  };
 
   const handleRemoveMapping = (id) => {
-    setMappings(mappings.filter((m) => m.id !== id))
-  }
+    setMappings(mappings.filter((m) => m.id !== id));
+  };
 
   const handleUpdateMapping = (id, field, value) => {
-    setMappings(mappings.map((m) => (m.id === id ? { ...m, [field]: value } : m)))
-  }
+    setMappings(
+      mappings.map((m) => (m.id === id ? { ...m, [field]: value } : m)),
+    );
+  };
 
   const handleSubmit = async (isDraft = false) => {
-    const proj = projects.find((p) => p.id === projectId) || projects[0]
+    const proj = projects.find((p) => p.id === projectId) || projects[0];
     if (!proj) {
-      showToast('No Project Selected', 'Please create or select a project first.', 'error')
-      return
+      showToast(
+        "No Project Selected",
+        "Please create or select a project first.",
+        "error",
+      );
+      return;
     }
-
-    const agent = agents.find((a) => a.id === selectedAgentId) || agents[0]
 
     const sourcePath =
-      sourceType === 'CSV'
-        ? sourceCsvPath || '/var/data/exports/customers_dump.csv (Dummy)'
-        : `${sourceDatabase || 'production'}.${sourceSchema || 'public'}.${sourceTable || 'customers'}`
+      sourceType === "CSV"
+        ? sourceCsvPath || "/var/data/exports/customers_dump.csv"
+        : `${sourceDatabase || "production"}.${sourceSchema || "public"}.${sourceTable || "customers"}`;
 
-    const targetPath = `${targetDatabase || 'analytics'}.${targetSchema || 'public'}.${targetTable || 'customers_v2'}`
+    const targetPath = `${targetDatabase || "analytics"}.${targetSchema || "public"}.${targetTable || "customers_v2"}`;
 
-    setIsSubmitting(true)
     try {
-      const createdMig = await addMigration({
-        name: name || 'Customer Data Migration (Dummy)',
+      const res = await createMigration({
         projectId: proj.id,
-        projectName: proj.name || 'Customer Platform (Dummy)',
-        description:
-          description ||
-          'Production customer records sync with field sanitization (Dummy)',
+        name: name?.trim() || "Customer Data Migration",
+        description: description?.trim() || null,
         source_path: sourcePath,
         target_path: targetPath,
-        sourceConnId: sourceConnId || 'conn-pg-prod (Dummy)',
-        sourceType: sourceType || 'PostgreSQL (Dummy)',
-        sourceTargetLabel: `${sourcePath} → ${targetPath}`,
-        targetConnId: targetConnId || 'conn-pg-analytics (Dummy)',
-        targetType: targetType || 'PostgreSQL (Dummy)',
-        agentId: agent?.id || 'agent-prod-01 (Dummy)',
-        agentName: agent?.name || 'Production Agent US-East (Dummy)',
-        status: isDraft ? 'PAUSED' : 'RUNNING',
-        recordsTotal: 1000000,
-        fieldMappingsCount: mappings.length
-          ? `${mappings.length} (Dummy)`
-          : '6 (Dummy)',
-        batchSize: batchSize || 2000,
-        retries: retryCount || 3,
-      })
+      }).unwrap();
+
+      const createdMig = res?.data || res;
+      showToast(
+        "Migration Created",
+        `"${createdMig?.name || name}" was created successfully.`,
+        "success",
+      );
 
       if (createdMig?.id) {
-        navigate(`/migrations/${createdMig.id}`)
+        navigate(`/migrations/${createdMig.id}`);
       } else {
-        navigate('/migrations')
+        navigate("/migrations");
       }
     } catch (err) {
-      console.error('Error submitting migration:', err)
-      showToast('Error', err?.message || 'Failed to create migration', 'error')
-    } finally {
-      setIsSubmitting(false)
+      console.error("Error creating migration:", err);
+      showToast(
+        "Creation Failed",
+        err?.data?.message || err?.message || "Failed to create migration",
+        "error",
+      );
     }
-  }
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Breadcrumbs */}
       <Breadcrumbs
         items={[
-          { label: 'Migrations', to: '/migrations' },
-          { label: 'New Migration' },
+          { label: "Migrations", to: "/migrations" },
+          { label: "New Migration" },
         ]}
       />
 
@@ -180,39 +200,40 @@ export default function CreateMigration() {
             Create Migration
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Configure pipeline parameters. The customer-hosted agent will execute data transfer locally.
+            Configure pipeline parameters. The customer-hosted agent will
+            execute data transfer locally.
           </p>
         </div>
 
         {/* Multi-step progress bar */}
         <div className="grid grid-cols-6 gap-2 pt-2">
           {steps.map((s) => {
-            const isCompleted = step > s.num
-            const isCurrent = step === s.num
+            const isCompleted = step > s.num;
+            const isCurrent = step === s.num;
             return (
               <div key={s.num} className="space-y-1.5">
                 <div
                   className={`h-1.5 rounded-full transition-all ${
                     isCompleted
-                      ? 'bg-emerald-500'
+                      ? "bg-emerald-500"
                       : isCurrent
-                      ? 'bg-indigo-600'
-                      : 'bg-slate-200 dark:bg-slate-800'
+                        ? "bg-indigo-600"
+                        : "bg-slate-200 dark:bg-slate-800"
                   }`}
                 />
                 <p
                   className={`text-[11px] font-medium truncate ${
                     isCurrent
-                      ? 'text-indigo-600 dark:text-indigo-400 font-semibold'
+                      ? "text-indigo-600 dark:text-indigo-400 font-semibold"
                       : isCompleted
-                      ? 'text-slate-700 dark:text-slate-300'
-                      : 'text-slate-400'
+                        ? "text-slate-700 dark:text-slate-300"
+                        : "text-slate-400"
                   }`}
                 >
                   {s.num}. {s.title}
                 </p>
               </div>
-            )
+            );
           })}
         </div>
       </div>
@@ -223,8 +244,13 @@ export default function CreateMigration() {
         {step === 1 && (
           <div className="space-y-5">
             <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Step 1 — Basic Details</h2>
-              <p className="text-xs text-slate-500">Provide an identifier and project context for this migration job.</p>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                Step 1 — Basic Details
+              </h2>
+              <p className="text-xs text-slate-500">
+                Provide an identifier and project context for this migration
+                job.
+              </p>
             </div>
 
             <div>
@@ -246,7 +272,8 @@ export default function CreateMigration() {
               </label>
               {projects.length === 0 ? (
                 <div className="p-3 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl">
-                  No projects available. Please create a project first before creating a migration.
+                  No projects available. Please create a project first before
+                  creating a migration.
                 </div>
               ) : (
                 <select
@@ -256,7 +283,7 @@ export default function CreateMigration() {
                 >
                   {projects.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} ({p.environment || 'Production (Dummy)'})
+                      {p.name} ({p.environment || "Production (Dummy)"})
                     </option>
                   ))}
                 </select>
@@ -282,21 +309,26 @@ export default function CreateMigration() {
         {step === 2 && (
           <div className="space-y-6">
             <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Step 2 — Source Configuration</h2>
-              <p className="text-xs text-slate-500">Choose where your data originates from inside your infrastructure.</p>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                Step 2 — Source Configuration
+              </h2>
+              <p className="text-xs text-slate-500">
+                Choose where your data originates from inside your
+                infrastructure.
+              </p>
             </div>
 
             {/* Source type selector */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              {['PostgreSQL', 'MySQL', 'CSV', 'JSON', 'S3'].map((type) => (
+              {["PostgreSQL", "MySQL", "CSV", "JSON", "S3"].map((type) => (
                 <button
                   key={type}
                   type="button"
                   onClick={() => setSourceType(type)}
                   className={`p-3 rounded-xl border text-left flex flex-col justify-between h-20 transition-all ${
                     sourceType === type
-                      ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-bold'
-                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
+                      ? "border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-bold"
+                      : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300"
                   }`}
                 >
                   <Database className="w-4 h-4" />
@@ -306,7 +338,7 @@ export default function CreateMigration() {
             </div>
 
             {/* Source details form */}
-            {sourceType === 'PostgreSQL' || sourceType === 'MySQL' ? (
+            {sourceType === "PostgreSQL" || sourceType === "MySQL" ? (
               <div className="space-y-4 pt-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -377,7 +409,8 @@ export default function CreateMigration() {
                     className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono"
                   />
                   <p className="text-[11px] text-slate-400 mt-1">
-                    File remains strictly mounted inside customer agent volume. Never uploaded to cloud.
+                    File remains strictly mounted inside customer agent volume.
+                    Never uploaded to cloud.
                   </p>
                 </div>
               </div>
@@ -390,11 +423,14 @@ export default function CreateMigration() {
                 onClick={testSource}
                 className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-200 transition-colors"
               >
-                {sourceTestStatus === 'testing' ? 'Testing probe...' : 'Test Connection'}
+                {sourceTestStatus === "testing"
+                  ? "Testing probe..."
+                  : "Test Connection"}
               </button>
-              {sourceTestStatus === 'success' && (
+              {sourceTestStatus === "success" && (
                 <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-mono font-medium">
-                  <CheckCircle2 className="w-4 h-4" /> Connection successful (1.4ms)
+                  <CheckCircle2 className="w-4 h-4" /> Connection successful
+                  (1.4ms)
                 </span>
               )}
             </div>
@@ -405,20 +441,24 @@ export default function CreateMigration() {
         {step === 3 && (
           <div className="space-y-6">
             <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Step 3 — Target Configuration</h2>
-              <p className="text-xs text-slate-500">Specify the destination warehouse or database.</p>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                Step 3 — Target Configuration
+              </h2>
+              <p className="text-xs text-slate-500">
+                Specify the destination warehouse or database.
+              </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              {['PostgreSQL', 'MySQL', 'S3'].map((type) => (
+            <div className="grid grid-cols-2 gap-3">
+              {["PostgreSQL", "MySQL"].map((type) => (
                 <button
                   key={type}
                   type="button"
                   onClick={() => setTargetType(type)}
                   className={`p-3 rounded-xl border text-left flex flex-col justify-between h-20 transition-all ${
                     targetType === type
-                      ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-bold'
-                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
+                      ? "border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-bold"
+                      : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300"
                   }`}
                 >
                   <Database className="w-4 h-4" />
@@ -490,11 +530,14 @@ export default function CreateMigration() {
                 onClick={testTarget}
                 className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-200 transition-colors"
               >
-                {targetTestStatus === 'testing' ? 'Testing probe...' : 'Test Connection'}
+                {targetTestStatus === "testing"
+                  ? "Testing probe..."
+                  : "Test Connection"}
               </button>
-              {targetTestStatus === 'success' && (
+              {targetTestStatus === "success" && (
                 <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-mono font-medium">
-                  <CheckCircle2 className="w-4 h-4" /> Destination verified (2.1ms)
+                  <CheckCircle2 className="w-4 h-4" /> Destination verified
+                  (2.1ms)
                 </span>
               )}
             </div>
@@ -506,8 +549,13 @@ export default function CreateMigration() {
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-white">Step 4 — Field Mapping</h2>
-                <p className="text-xs text-slate-500">Map source columns to target attributes and declare data transformations.</p>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                  Step 4 — Field Mapping
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Map source columns to target attributes and declare data
+                  transformations.
+                </p>
               </div>
               <button
                 type="button"
@@ -533,7 +581,9 @@ export default function CreateMigration() {
                     <input
                       type="text"
                       value={m.sourceField}
-                      onChange={(e) => handleUpdateMapping(m.id, 'sourceField', e.target.value)}
+                      onChange={(e) =>
+                        handleUpdateMapping(m.id, "sourceField", e.target.value)
+                      }
                       className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono text-xs"
                     />
                   </div>
@@ -549,7 +599,9 @@ export default function CreateMigration() {
                     <input
                       type="text"
                       value={m.targetField}
-                      onChange={(e) => handleUpdateMapping(m.id, 'targetField', e.target.value)}
+                      onChange={(e) =>
+                        handleUpdateMapping(m.id, "targetField", e.target.value)
+                      }
                       className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono text-xs"
                     />
                   </div>
@@ -560,7 +612,13 @@ export default function CreateMigration() {
                     </span>
                     <select
                       value={m.transformation}
-                      onChange={(e) => handleUpdateMapping(m.id, 'transformation', e.target.value)}
+                      onChange={(e) =>
+                        handleUpdateMapping(
+                          m.id,
+                          "transformation",
+                          e.target.value,
+                        )
+                      }
                       className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono text-xs"
                     >
                       <option value="None">None</option>
@@ -578,7 +636,13 @@ export default function CreateMigration() {
                       <input
                         type="checkbox"
                         checked={m.required}
-                        onChange={(e) => handleUpdateMapping(m.id, 'required', e.target.checked)}
+                        onChange={(e) =>
+                          handleUpdateMapping(
+                            m.id,
+                            "required",
+                            e.target.checked,
+                          )
+                        }
                         className="rounded border-slate-300 text-indigo-600"
                       />
                       <span>Req</span>
@@ -602,8 +666,12 @@ export default function CreateMigration() {
         {step === 5 && (
           <div className="space-y-6">
             <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Step 5 — Validation &amp; Execution Agent</h2>
-              <p className="text-xs text-slate-500">Select which customer-hosted agent will run this workload.</p>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                Step 5 — Validation &amp; Execution Agent
+              </h2>
+              <p className="text-xs text-slate-500">
+                Select which customer-hosted agent will run this workload.
+              </p>
             </div>
 
             <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-800 dark:text-emerald-300 space-y-1">
@@ -612,7 +680,8 @@ export default function CreateMigration() {
                 Schema Compatibility Check Passed
               </p>
               <p className="text-[11px] text-slate-600 dark:text-slate-400">
-                Discovered 1,000,000 estimated records in source table. 6 fields mapped with 0 unhandled constraints.
+                Discovered 1,000,000 estimated records in source table. 6 fields
+                mapped with 0 unhandled constraints.
               </p>
             </div>
 
@@ -633,7 +702,8 @@ export default function CreateMigration() {
                   ))}
                 </select>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  The agent establishes an outbound WSS connection to receive job instructions.
+                  The agent establishes an outbound WSS connection to receive
+                  job instructions.
                 </p>
               </div>
 
@@ -648,7 +718,9 @@ export default function CreateMigration() {
                     onChange={(e) => setBatchSize(Number(e.target.value))}
                     className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-slate-900 dark:text-slate-100"
                   />
-                  <span className="text-[10px] text-slate-400">Records committed per atomic batch</span>
+                  <span className="text-[10px] text-slate-400">
+                    Records committed per atomic batch
+                  </span>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -660,7 +732,9 @@ export default function CreateMigration() {
                     onChange={(e) => setRetryCount(Number(e.target.value))}
                     className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-slate-900 dark:text-slate-100"
                   />
-                  <span className="text-[10px] text-slate-400">Max backoff retries on transient errors</span>
+                  <span className="text-[10px] text-slate-400">
+                    Max backoff retries on transient errors
+                  </span>
                 </div>
               </div>
             </div>
@@ -671,16 +745,23 @@ export default function CreateMigration() {
         {step === 6 && (
           <div className="space-y-6">
             <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Step 6 — Review Migration</h2>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                Step 6 — Review Migration
+              </h2>
               <p className="text-xs text-slate-500">
-                Confirm your migration definition. Note: Creating a migration stores the definition; execution must be triggered explicitly.
+                Confirm your migration definition. Note: Creating a migration
+                stores the definition; execution must be triggered explicitly.
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
-                <span className="text-slate-400 uppercase font-semibold text-[10px]">Source Target</span>
-                <p className="font-bold text-slate-900 dark:text-white">{name}</p>
+                <span className="text-slate-400 uppercase font-semibold text-[10px]">
+                  Source Target
+                </span>
+                <p className="font-bold text-slate-900 dark:text-white">
+                  {name}
+                </p>
                 <p className="font-mono text-slate-500">
                   {sourceType} ({sourceDatabase}.{sourceTable})
                 </p>
@@ -693,19 +774,32 @@ export default function CreateMigration() {
               </div>
 
               <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
-                <span className="text-slate-400 uppercase font-semibold text-[10px]">Execution Parameters</span>
+                <span className="text-slate-400 uppercase font-semibold text-[10px]">
+                  Execution Parameters
+                </span>
                 <p className="font-semibold text-slate-900 dark:text-white">
-                  Agent: {agents.find((a) => a.id === selectedAgentId)?.name || 'Default Agent'}
+                  Agent:{" "}
+                  {agents.find((a) => a.id === selectedAgentId)?.name ||
+                    "Default Agent"}
                 </p>
-                <p className="text-slate-500">Field Mappings: {mappings.length} columns</p>
-                <p className="text-slate-500">Estimated Volume: ~1,000,000 records</p>
-                <p className="text-slate-500">Batching: {batchSize} records/checkpoint</p>
+                <p className="text-slate-500">
+                  Field Mappings: {mappings.length} columns
+                </p>
+                <p className="text-slate-500">
+                  Estimated Volume: ~1,000,000 records
+                </p>
+                <p className="text-slate-500">
+                  Batching: {batchSize} records/checkpoint
+                </p>
               </div>
             </div>
 
             <div className="p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-              <span>DataRelay will orchestrate and monitor progress, but your data stays securely within your VPC.</span>
+              <span>
+                DataRelay will orchestrate and monitor progress, but your data
+                stays securely within your VPC.
+              </span>
             </div>
           </div>
         )}
@@ -734,7 +828,7 @@ export default function CreateMigration() {
                   onClick={() => handleSubmit(true)}
                   className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Saving...' : 'Save as Draft'}
+                  {isSubmitting ? "Saving..." : "Save as Draft"}
                 </button>
                 <button
                   type="button"
@@ -742,7 +836,7 @@ export default function CreateMigration() {
                   onClick={() => handleSubmit(false)}
                   className="px-5 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20 transition-all active:scale-95 disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Creating...' : 'Create Migration'}
+                  {isSubmitting ? "Creating..." : "Create Migration"}
                 </button>
               </>
             ) : (
@@ -759,5 +853,5 @@ export default function CreateMigration() {
         </div>
       </div>
     </div>
-  )
+  );
 }

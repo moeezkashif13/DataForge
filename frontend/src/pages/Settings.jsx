@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState } from "react";
 import {
   Settings as SettingsIcon,
   Shield,
@@ -8,58 +8,76 @@ import {
   CheckCircle2,
   Copy,
   AlertTriangle,
-} from 'lucide-react'
-import { useData } from '../context/DataContext'
-import { ConfirmDialog } from '../components/ui/ConfirmDialog'
-import { useToast } from '../context/ToastContext'
+} from "lucide-react";
+import { useData } from "../context/DataContext";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { useToast } from "../context/ToastContext";
 
 export default function Settings() {
-  const { currentWorkspace } = useData()
-  const { showToast } = useToast()
+  const { currentWorkspace } = useData();
+  const { showToast } = useToast();
 
-  const [activeTab, setActiveTab] = useState('general')
-  const [orgName, setOrgName] = useState(currentWorkspace.name)
-  const [timezone, setTimezone] = useState('UTC (Etc/UTC)')
-  const [defaultEnv, setDefaultEnv] = useState('Production')
+  const [activeTab, setActiveTab] = useState("general");
+  const [orgName, setOrgName] = useState(currentWorkspace.name);
+  const [timezone, setTimezone] = useState("UTC (Etc/UTC)");
+  const [defaultEnv, setDefaultEnv] = useState("Production");
 
   // Notification toggles
-  const [notifySuccess, setNotifySuccess] = useState(true)
-  const [notifyFailure, setNotifyFailure] = useState(true)
-  const [notifyAgentOffline, setNotifyAgentOffline] = useState(true)
-  const [slackWebhook, setSlackWebhook] = useState('https://hooks.slack.com/services/T00/B00/X00')
+  const [notifySuccess, setNotifySuccess] = useState(true);
+  const [notifyFailure, setNotifyFailure] = useState(true);
+  const [notifyAgentOffline, setNotifyAgentOffline] = useState(true);
+  const [slackWebhook, setSlackWebhook] = useState(
+    "https://hooks.slack.com/services/T00/B00/X00",
+  );
 
   // API Token state
-  const [apiKey, setApiKey] = useState('drl_live_9f81a742c38d40bebc8e71')
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
+  const [apiKey, setApiKey] = useState("drl_live_9f81a742c38d40bebc8e71");
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [confirmDeleteInput, setConfirmDeleteInput] = useState("");
 
   const tabs = [
-    { id: 'general', name: 'General', icon: SettingsIcon },
-    { id: 'security', name: 'Security & mTLS', icon: Shield },
-    { id: 'notifications', name: 'Notifications', icon: Bell },
-    { id: 'api', name: 'API Credentials', icon: Key },
-    { id: 'danger', name: 'Danger Zone', icon: Trash2 },
-  ]
+    { id: "general", name: "General", icon: SettingsIcon },
+    { id: "security", name: "Security & mTLS", icon: Shield },
+    { id: "notifications", name: "Notifications", icon: Bell },
+    // { id: 'api', name: 'API Credentials', icon: Key },
+    { id: "danger", name: "Danger Zone", icon: Trash2 },
+  ];
 
   const handleSaveGeneral = (e) => {
-    e.preventDefault()
-    showToast('Saved', 'Organization settings updated.', 'success')
-  }
+    e.preventDefault();
+    showToast("Saved", "Organization settings updated.", "success");
+  };
 
   const handleRotateKey = () => {
-    const newKey = 'drl_live_' + Array.from({ length: 24 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
-    setApiKey(newKey)
-    showToast('API Key Rotated', 'New secret key generated. Ensure agents and CI/CD are updated.', 'warning')
-  }
+    const newKey =
+      "drl_live_" +
+      Array.from({ length: 24 }, () =>
+        Math.floor(Math.random() * 16).toString(16),
+      ).join("");
+    setApiKey(newKey);
+    showToast(
+      "API Key Rotated",
+      "New secret key generated. Ensure agents and CI/CD are updated.",
+      "warning",
+    );
+  };
 
   const handleDeleteOrg = () => {
     if (confirmDeleteInput !== currentWorkspace.name) {
-      showToast('Validation Error', 'Workspace name did not match confirmation string.', 'error')
-      return
+      showToast(
+        "Validation Error",
+        "Workspace name did not match confirmation string.",
+        "error",
+      );
+      return;
     }
-    showToast('Workspace Deleted', `Workspace "${currentWorkspace.name}" removed.`, 'error')
-    setIsDeleteModalOpen(false)
-  }
+    showToast(
+      "Workspace Deleted",
+      `Workspace "${currentWorkspace.name}" removed.`,
+      "error",
+    );
+    setIsDeleteModalOpen(false);
+  };
 
   return (
     <div className="max-w-4xl space-y-8">
@@ -76,8 +94,8 @@ export default function Settings() {
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-slate-200/80 dark:border-slate-800/80 overflow-x-auto">
         {tabs.map((tab) => {
-          const Icon = tab.icon
-          const isActive = activeTab === tab.id
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
@@ -85,23 +103,28 @@ export default function Settings() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-2.5 text-xs font-medium border-b-2 transition-all whitespace-nowrap ${
                 isActive
-                  ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+                  ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 font-semibold"
+                  : "border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
               <span>{tab.name}</span>
             </button>
-          )
+          );
         })}
       </div>
 
       {/* Tab Panels */}
       <div className="pt-2">
         {/* GENERAL */}
-        {activeTab === 'general' && (
-          <form onSubmit={handleSaveGeneral} className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-6">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">General Preferences</h2>
+        {activeTab === "general" && (
+          <form
+            onSubmit={handleSaveGeneral}
+            className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-6"
+          >
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              General Preferences
+            </h2>
 
             <div className="space-y-4">
               <div>
@@ -126,9 +149,15 @@ export default function Settings() {
                   className="w-full max-w-md px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
                 >
                   <option value="UTC (Etc/UTC)">UTC (Etc/UTC)</option>
-                  <option value="America/New_York (EST)">America/New_York (EST)</option>
-                  <option value="America/Los_Angeles (PST)">America/Los_Angeles (PST)</option>
-                  <option value="Europe/London (GMT)">Europe/London (GMT)</option>
+                  <option value="America/New_York (EST)">
+                    America/New_York (EST)
+                  </option>
+                  <option value="America/Los_Angeles (PST)">
+                    America/Los_Angeles (PST)
+                  </option>
+                  <option value="Europe/London (GMT)">
+                    Europe/London (GMT)
+                  </option>
                   <option value="Asia/Karachi (PKT)">Asia/Karachi (PKT)</option>
                 </select>
               </div>
@@ -161,15 +190,21 @@ export default function Settings() {
         )}
 
         {/* SECURITY */}
-        {activeTab === 'security' && (
+        {activeTab === "security" && (
           <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-6">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Security &amp; Zero-Trust Policies</h2>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              Security &amp; Zero-Trust Policies
+            </h2>
 
             <div className="space-y-4 text-xs">
               <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-slate-900 dark:text-white">Two-Factor Authentication (2FA)</p>
-                  <p className="text-slate-500 mt-0.5">Enforce hardware security key or TOTP for all team members.</p>
+                  <p className="font-semibold text-slate-900 dark:text-white">
+                    Two-Factor Authentication (2FA)
+                  </p>
+                  <p className="text-slate-500 mt-0.5">
+                    Enforce hardware security key or TOTP for all team members.
+                  </p>
                 </div>
                 <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-medium">
                   ENFORCED
@@ -178,8 +213,13 @@ export default function Settings() {
 
               <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-slate-900 dark:text-white">Agent Mutual TLS (mTLS)</p>
-                  <p className="text-slate-500 mt-0.5">X.509 client certificate verification on all WebSocket frames.</p>
+                  <p className="font-semibold text-slate-900 dark:text-white">
+                    Agent Mutual TLS (mTLS)
+                  </p>
+                  <p className="text-slate-500 mt-0.5">
+                    X.509 client certificate verification on all WebSocket
+                    frames.
+                  </p>
                 </div>
                 <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-medium">
                   ACTIVE
@@ -188,25 +228,37 @@ export default function Settings() {
 
               <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-slate-900 dark:text-white">Session Timeout</p>
-                  <p className="text-slate-500 mt-0.5">Auto sign-out after 12 hours of inactivity.</p>
+                  <p className="font-semibold text-slate-900 dark:text-white">
+                    Session Timeout
+                  </p>
+                  <p className="text-slate-500 mt-0.5">
+                    Auto sign-out after 12 hours of inactivity.
+                  </p>
                 </div>
-                <span className="font-mono text-slate-700 dark:text-slate-300">12 Hours</span>
+                <span className="font-mono text-slate-700 dark:text-slate-300">
+                  12 Hours
+                </span>
               </div>
             </div>
           </div>
         )}
 
         {/* NOTIFICATIONS */}
-        {activeTab === 'notifications' && (
+        {activeTab === "notifications" && (
           <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-6">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Alert Routing &amp; Webhooks</h2>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              Alert Routing &amp; Webhooks
+            </h2>
 
             <div className="space-y-4 text-xs">
               <label className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 cursor-pointer">
                 <div>
-                  <p className="font-semibold text-slate-900 dark:text-white">Migration Completed</p>
-                  <p className="text-slate-500">Dispatch notification when a migration finishes 100%.</p>
+                  <p className="font-semibold text-slate-900 dark:text-white">
+                    Migration Completed
+                  </p>
+                  <p className="text-slate-500">
+                    Dispatch notification when a migration finishes 100%.
+                  </p>
                 </div>
                 <input
                   type="checkbox"
@@ -218,8 +270,12 @@ export default function Settings() {
 
               <label className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 cursor-pointer">
                 <div>
-                  <p className="font-semibold text-slate-900 dark:text-white">Migration Error / Halt</p>
-                  <p className="text-slate-500">Immediate high-priority alert if batch validation fails.</p>
+                  <p className="font-semibold text-slate-900 dark:text-white">
+                    Migration Error / Halt
+                  </p>
+                  <p className="text-slate-500">
+                    Immediate high-priority alert if batch validation fails.
+                  </p>
                 </div>
                 <input
                   type="checkbox"
@@ -231,8 +287,12 @@ export default function Settings() {
 
               <label className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 cursor-pointer">
                 <div>
-                  <p className="font-semibold text-slate-900 dark:text-white">Agent Offline Disconnect</p>
-                  <p className="text-slate-500">Alert if an agent misses 3 consecutive heartbeats.</p>
+                  <p className="font-semibold text-slate-900 dark:text-white">
+                    Agent Offline Disconnect
+                  </p>
+                  <p className="text-slate-500">
+                    Alert if an agent misses 3 consecutive heartbeats.
+                  </p>
                 </div>
                 <input
                   type="checkbox"
@@ -256,7 +316,9 @@ export default function Settings() {
 
               <button
                 type="button"
-                onClick={() => showToast('Saved', 'Alert preferences saved.', 'success')}
+                onClick={() =>
+                  showToast("Saved", "Alert preferences saved.", "success")
+                }
                 className="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
               >
                 Save Notification Rules
@@ -266,7 +328,7 @@ export default function Settings() {
         )}
 
         {/* API CREDENTIALS */}
-        {activeTab === 'api' && (
+        {/* {activeTab === 'api' && (
           <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-6">
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white">Control Plane API Keys</h2>
@@ -301,14 +363,18 @@ export default function Settings() {
               </button>
             </div>
           </div>
-        )}
+        )} */}
 
         {/* DANGER ZONE */}
-        {activeTab === 'danger' && (
+        {activeTab === "danger" && (
           <div className="p-6 sm:p-8 rounded-2xl bg-rose-500/5 border border-rose-500/20 space-y-4">
-            <h2 className="text-base font-bold text-rose-600 dark:text-rose-400">Danger Zone</h2>
+            <h2 className="text-base font-bold text-rose-600 dark:text-rose-400">
+              Danger Zone
+            </h2>
             <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Deleting this organization will irrevocably unregister all connected customer agents, delete all migration definitions, and purge telemetry checkpoints.
+              Deleting this organization will irrevocably unregister all
+              connected customer agents, delete all migration definitions, and
+              purge telemetry checkpoints.
             </p>
 
             <button
@@ -326,9 +392,15 @@ export default function Settings() {
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
           <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-4">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">Delete Organization</h3>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Delete Organization
+            </h3>
             <p className="text-xs text-slate-500">
-              Type <strong className="text-slate-900 dark:text-white font-mono">{currentWorkspace.name}</strong> to confirm deletion.
+              Type{" "}
+              <strong className="text-slate-900 dark:text-white font-mono">
+                {currentWorkspace.name}
+              </strong>{" "}
+              to confirm deletion.
             </p>
 
             <input
@@ -360,5 +432,5 @@ export default function Settings() {
         </div>
       )}
     </div>
-  )
+  );
 }

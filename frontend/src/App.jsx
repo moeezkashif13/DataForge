@@ -1,41 +1,41 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router'
-import { ToastProvider } from './context/ToastContext'
-import { DataProvider } from './context/DataContext'
+import { BrowserRouter, Routes, Route, Navigate } from "react-router";
+import { ToastProvider } from "./context/ToastContext";
+import { DataProvider } from "./context/DataContext";
 
 // Layouts
-import AppShell from './layouts/AppShell'
-import AuthLayout from './layouts/AuthLayout'
+import AppShell from "./layouts/AppShell";
+import AuthLayout from "./layouts/AuthLayout";
 
 // Auth Pages
-import Login from './pages/auth/Login'
-import Register from './pages/auth/Register'
-import ForgotPassword from './pages/auth/ForgotPassword'
-import ResetPassword from './pages/auth/ResetPassword'
+import Login from "./pages/auth/Login";
+import Register from "./pages/auth/Register";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
 
 // App Pages
-import Dashboard from './pages/Dashboard'
-import Projects from './pages/Projects'
-import ProjectDetail from './pages/ProjectDetail'
-import Migrations from './pages/Migrations'
-import CreateMigration from './pages/CreateMigration'
-import MigrationDetail from './pages/MigrationDetail'
-import Agents from './pages/Agents'
-import AddAgent from './pages/AddAgent'
-import AgentDetail from './pages/AgentDetail'
-import Connections from './pages/Connections'
-import Activity from './pages/Activity'
-import Logs from './pages/Logs'
-import Team from './pages/Team'
-import Billing from './pages/Billing'
-import Settings from './pages/Settings'
-import NotFound from './pages/NotFound'
+import Dashboard from "./pages/Dashboard";
+import Projects from "./pages/Projects";
+import ProjectDetail from "./pages/ProjectDetail";
+import Migrations from "./pages/Migrations";
+import CreateMigration from "./pages/CreateMigration";
+import MigrationDetail from "./pages/MigrationDetail";
+import Agents from "./pages/Agents";
+import AddAgent from "./pages/AddAgent";
+import AgentDetail from "./pages/AgentDetail";
+// import Connections from './pages/Connections'
+import Activity from "./pages/Activity";
+import Logs from "./pages/Logs";
+import Team from "./pages/Team";
+import Billing from "./pages/Billing";
+import Settings from "./pages/Settings";
+import NotFound from "./pages/NotFound";
 
-import ProtectedRoute from './components/auth/ProtectedRoute'
-import { useGetSessionQuery } from './store/api/authApi'
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import { useGetSessionQuery } from "./store/api/authApi";
 
 export default function App() {
   // Query Better Auth session on initial mount to restore user/token
-  useGetSessionQuery()
+  useGetSessionQuery();
 
   return (
     <ToastProvider>
@@ -78,7 +78,10 @@ export default function App() {
               {/* Migrations */}
               <Route path="migrations" element={<Migrations />} />
               <Route path="migrations/new" element={<CreateMigration />} />
-              <Route path="migrations/:migrationId" element={<MigrationDetail />} />
+              <Route
+                path="migrations/:migrationId"
+                element={<MigrationDetail />}
+              />
 
               {/* Agents */}
               <Route path="agents" element={<Agents />} />
@@ -86,8 +89,8 @@ export default function App() {
               <Route path="agents/:agentId" element={<AgentDetail />} />
 
               {/* Connections */}
-              <Route path="connections" element={<Connections />} />
-              <Route path="connections/new" element={<Connections />} />
+              {/* <Route path="connections" element={<Connections />} />
+              <Route path="connections/new" element={<Connections />} /> */}
 
               {/* Monitoring */}
               <Route path="activity" element={<Activity />} />
@@ -108,5 +111,5 @@ export default function App() {
         </BrowserRouter>
       </DataProvider>
     </ToastProvider>
-  )
+  );
 }

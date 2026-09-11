@@ -1,45 +1,53 @@
-import { useState } from 'react'
-import { Link } from 'react-router'
-import { Folder, Plus, ArrowUpRight, Search, Layers, Server, Clock } from 'lucide-react'
-import { useData } from '../context/DataContext'
-import { EmptyState } from '../components/ui/EmptyState'
+import { useState } from "react";
+import { Link } from "react-router";
+import {
+  Folder,
+  Plus,
+  ArrowUpRight,
+  Search,
+  Layers,
+  Server,
+  Clock,
+} from "lucide-react";
+import { useData } from "../context/DataContext";
+import { EmptyState } from "../components/ui/EmptyState";
 
 export default function Projects() {
-  const { projects, addProject, isProjectsLoading } = useData()
-  const [filterEnv, setFilterEnv] = useState('ALL')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isCreating, setIsCreating] = useState(false)
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [environment, setEnvironment] = useState('Production')
+  const { projects, addProject, isProjectsLoading } = useData();
+  const [filterEnv, setFilterEnv] = useState("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [environment, setEnvironment] = useState("Production");
 
   const filteredProjects = (projects || []).filter((p) => {
-    const envUpper = (p.environment || '').toUpperCase()
-    const matchEnv = filterEnv === 'ALL' || envUpper.includes(filterEnv)
+    const envUpper = (p.environment || "").toUpperCase();
+    const matchEnv = filterEnv === "ALL" || envUpper.includes(filterEnv);
     const matchSearch =
-      (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.description || '').toLowerCase().includes(searchQuery.toLowerCase())
-    return matchEnv && matchSearch
-  })
+      (p.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.description || "").toLowerCase().includes(searchQuery.toLowerCase());
+    return matchEnv && matchSearch;
+  });
 
   const handleCreate = async (e) => {
-    e.preventDefault()
-    if (!name.trim()) return
-    setIsCreating(true)
+    e.preventDefault();
+    if (!name.trim()) return;
+    setIsCreating(true);
     try {
       await addProject({
         name: name.trim(),
-        description: description.trim() || 'Custom data migration group.',
+        description: description.trim() || "Custom data migration group.",
         environment,
-      })
-      setName('')
-      setDescription('')
-      setIsModalOpen(false)
+      });
+      setName("");
+      setDescription("");
+      setIsModalOpen(false);
     } finally {
-      setIsCreating(false)
+      setIsCreating(false);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -66,15 +74,15 @@ export default function Projects() {
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
         <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs w-fit">
-          {['ALL', 'PRODUCTION', 'STAGING', 'DEVELOPMENT'].map((env) => (
+          {["ALL", "PRODUCTION", "STAGING", "DEVELOPMENT"].map((env) => (
             <button
               key={env}
               type="button"
               onClick={() => setFilterEnv(env)}
               className={`px-3 py-1 rounded-lg font-medium transition-all ${
                 filterEnv === env
-                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-semibold'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-semibold"
+                  : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
               }`}
             >
               {env.charAt(0) + env.slice(1).toLowerCase()}
@@ -136,7 +144,7 @@ export default function Projects() {
               </div>
 
               <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-4 text-slate-500 font-mono text-[11px]">
+                {/* <div className="flex items-center gap-4 text-slate-500 font-mono text-[11px]">
                   <span className="flex items-center gap-1.5">
                     <Layers className="w-3.5 h-3.5 text-slate-400" />
                     {project.migrationCount} migrations
@@ -145,7 +153,7 @@ export default function Projects() {
                     <Server className="w-3.5 h-3.5 text-slate-400" />
                     {project.agentCount} agents
                   </span>
-                </div>
+                </div> */}
                 <Link
                   to={`/projects/${project.id}`}
                   className="inline-flex items-center gap-1 font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
@@ -163,9 +171,12 @@ export default function Projects() {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
           <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">Create New Project</h3>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Create New Project
+            </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Group related data migrations, database connections, and assigned agents.
+              Group related data migrations, database connections, and assigned
+              agents.
             </p>
 
             <form onSubmit={handleCreate} className="mt-4 space-y-4">
@@ -239,5 +250,5 @@ export default function Projects() {
         </div>
       )}
     </div>
-  )
+  );
 }

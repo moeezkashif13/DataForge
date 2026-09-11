@@ -37,6 +37,14 @@ export const projectsApi = baseApi.injectEndpoints({
           : [{ type: "Project", id: "LIST" }],
     }),
 
+    getProjectById: builder.query({
+      query: (id) => `/organization/projects/${id}`,
+      transformResponse: (response) => {
+        return response?.project || null;
+      },
+      providesTags: (result, error, id) => [{ type: "Project", id }],
+    }),
+
     createProject: builder.mutation({
       query: (projectData) => ({
         url: "/organization/projects/create",
@@ -48,4 +56,8 @@ export const projectsApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useGetProjectsQuery, useCreateProjectMutation } = projectsApi;
+export const {
+  useGetProjectsQuery,
+  useGetProjectByIdQuery,
+  useCreateProjectMutation,
+} = projectsApi;
