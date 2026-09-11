@@ -16,10 +16,6 @@ import {
   useCreateProjectMutation,
 } from "../store/api/projectsApi";
 import {
-  useGetMigrationsQuery,
-  useCreateMigrationMutation,
-} from "../store/api/migrationsApi";
-import {
   useGetAgentsQuery,
   useCreateAgentMutation,
   useGenerateAgentTokenMutation,
@@ -117,11 +113,11 @@ export function DataProvider({ children }) {
   });
   const [createProjectMutation] = useCreateProjectMutation();
 
-  useEffect(() => {
-    if (apiProjects?.organizationId && !organizationId) {
-      dispatch(setCredentials({ organizationId: apiProjects.organizationId }));
-    }
-  }, [apiProjects, organizationId, dispatch]);
+  // useEffect(() => {
+  //   if (apiProjects?.organizationId && !organizationId) {
+  //     dispatch(setCredentials({ organizationId: apiProjects.organizationId }));
+  //   }
+  // }, [apiProjects, organizationId, dispatch]);
 
   const [localProjects, setLocalProjects] = useState([]);
   const projects =
@@ -224,6 +220,9 @@ export function DataProvider({ children }) {
       apiProjects?.organizationId ||
       apiAgents?.[0]?.organizationId;
 
+    console.log(apiProjects);
+    console.log(apiAgents);
+
     if (isAuthenticated) {
       try {
         const payload = {
@@ -232,6 +231,8 @@ export function DataProvider({ children }) {
           description:
             agentData.description || "Customer-hosted migration agent (Dummy)",
         };
+        console.log(payload);
+
         const res = await createAgentMutation(payload).unwrap();
         const created = res?.data || res;
 
@@ -374,202 +375,6 @@ export function DataProvider({ children }) {
     });
   };
 
-  // Migrations
-  const {
-    data: apiMigrations,
-    isLoading: isMigrationsLoading,
-    refetch: refetchMigrations,
-  } = useGetMigrationsQuery(undefined, {
-    skip: !isAuthenticated,
-  });
-  const [createMigrationMutation] = useCreateMigrationMutation();
-
-  const [localMigrations, setLocalMigrations] = useState([]);
-  const [migrationOverrides, setMigrationOverrides] = useState({});
-
-  const baseMigrations =
-    isAuthenticated && apiMigrations
-      ? apiMigrations
-      : localMigrations.length
-        ? localMigrations
-        : initialMigrations;
-
-  const migrations = baseMigrations.map((m) =>
-    migrationOverrides[m.id] ? { ...m, ...migrationOverrides[m.id] } : m,
-  );
-
-  const addMigration = async (migrationData) => {
-    if (isAuthenticated) {
-      try {
-        const payload = {
-          projectId: migrationData.projectId,
-          name: migrationData.name,
-          description:
-            migrationData.description ||
-            "Production customer records sync with field sanitization (Dummy)",
-          source_path:
-            migrationData.source_path || "production.customers (Dummy)",
-          target_path:
-            migrationData.target_path || "analytics.customers_v2 (Dummy)",
-        };
-
-        const res = await createMigrationMutation(payload).unwrap();
-        const created = res?.data || res;
-
-        addActivity({
-          type: "MIGRATION_CREATED",
-          title: "Migration configured",
-          detail: `Created definition "${created.name || migrationData.name}" for ${migrationData.projectName || "Project"}`,
-          user: "Current User",
-          icon: "workflow",
-          severity: "info",
-        });
-        showToast(
-          "Migration Created",
-          `"${created.name || migrationData.name}" is configured and ready for execution.`,
-          "success",
-        );
-        return created;
-      } catch (err) {
-        console.error(
-          "Failed to create migration via backend, creating locally:",
-          err,
-        );
-        showToast(
-          "Creation Note",
-          err?.data?.message || err?.message || "Saved locally",
-          "warning",
-        );
-      }
-    }
-
-    const newMig = {
-      id: `mig-${Date.now()}`,
-      status: "READY",
-      progress: 0,
-      recordsProcessed: 0,
-      recordsSucceeded: 0,
-      recordsFailed: 0,
-      throughput: 0,
-      startedAt: "Ready to start (Dummy)",
-      elapsed: "--",
-      eta: "Pending run (Dummy)",
-      checkpoint: "initial_state (Dummy)",
-      retries: 0,
-      batchSize: 2000,
-      lastRun: "Never (Dummy)",
-      ...migrationData,
-    };
-    setLocalMigrations((prev) => [newMig, ...prev]);
-    addActivity({
-      type: "MIGRATION_CREATED",
-      title: "Migration configured",
-      detail: `Created definition "${newMig.name}" for ${newMig.projectName || "Project"}`,
-      user: "Current User",
-      icon: "workflow",
-      severity: "info",
-    });
-    showToast(
-      "Migration Created",
-      `"${newMig.name}" is configured and ready for execution.`,
-      "success",
-    );
-    return newMig;
-  };
-
-  const startMigration = (migId) => {
-    setMigrationOverrides((prev) => ({
-      ...prev,
-      [migId]: {
-        ...(prev[migId] || {}),
-        status: "RUNNING",
-        startedAt: "Just now (Dummy)",
-        throughput: 720,
-        eta: "~14 minutes (Dummy)",
-      },
-    }));
-    addActivity({
-      type: "MIGRATION_STARTED",
-      title: "Migration execution triggered",
-      detail: `Control plane dispatched run command to assigned agent`,
-      user: "Current User",
-      icon: "play",
-      severity: "active",
-    });
-    showToast(
-      "Migration Started",
-      "Execution dispatched to customer-hosted agent.",
-      "success",
-    );
-  };
-
-  const pauseMigration = (migId) => {
-    setMigrationOverrides((prev) => ({
-      ...prev,
-      [migId]: {
-        ...(prev[migId] || {}),
-        status: "PAUSED",
-        throughput: 0,
-        eta: "Paused (Dummy)",
-      },
-    }));
-    addActivity({
-      type: "MIGRATION_PAUSED",
-      title: "Migration paused",
-      detail: `Agent saved checkpoint and paused active consumer threads`,
-      user: "Current User",
-      icon: "pause",
-      severity: "warning",
-    });
-    showToast(
-      "Migration Paused",
-      "Agent paused batch execution safely at checkpoint.",
-      "warning",
-    );
-  };
-
-  const resumeMigration = (migId) => {
-    setMigrationOverrides((prev) => ({
-      ...prev,
-      [migId]: {
-        ...(prev[migId] || {}),
-        status: "RUNNING",
-        throughput: 680,
-        eta: "~8 minutes (Dummy)",
-      },
-    }));
-    addActivity({
-      type: "MIGRATION_RESUMED",
-      title: "Migration resumed",
-      detail: `Resumed from checkpoint without record duplication`,
-      user: "Current User",
-      icon: "play",
-      severity: "active",
-    });
-    showToast("Migration Resumed", "Agent resumed data transfer.", "info");
-  };
-
-  const cancelMigration = (migId) => {
-    setMigrationOverrides((prev) => ({
-      ...prev,
-      [migId]: {
-        ...(prev[migId] || {}),
-        status: "CANCELLED",
-        throughput: 0,
-        eta: "Cancelled (Dummy)",
-      },
-    }));
-    addActivity({
-      type: "MIGRATION_CANCELLED",
-      title: "Migration cancelled",
-      detail: `Operation halted by user. Checkpoint stored for audit.`,
-      user: "Current User",
-      icon: "x",
-      severity: "error",
-    });
-    showToast("Migration Cancelled", "Active execution halted.", "error");
-  };
-
   // Activities & Logs
   const [activities, setActivities] = useState(initialActivities);
   const [logs, setLogs] = useState(initialLogs);
@@ -620,51 +425,51 @@ export function DataProvider({ children }) {
   };
 
   // Real-time progress simulator (simulates active stream in control plane)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMigrationOverrides((prev) => {
-        const next = { ...prev };
-        let hasChanges = false;
-        for (const m of baseMigrations) {
-          const current = next[m.id] ? { ...m, ...next[m.id] } : m;
-          if (
-            current.status === "RUNNING" &&
-            typeof current.recordsProcessed === "number" &&
-            typeof current.recordsTotal === "number" &&
-            current.recordsProcessed < current.recordsTotal
-          ) {
-            const increment = Math.floor(Math.random() * 250) + 150;
-            const newProcessed = Math.min(
-              current.recordsTotal,
-              current.recordsProcessed + increment,
-            );
-            const failedIncrement =
-              Math.random() > 0.85 ? Math.floor(Math.random() * 3) : 0;
-            const newSucceeded =
-              (current.recordsSucceeded || 0) + (increment - failedIncrement);
-            const newFailed = (current.recordsFailed || 0) + failedIncrement;
-            const newProgress = Number(
-              ((newProcessed / current.recordsTotal) * 100).toFixed(1),
-            );
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     setMigrationOverrides((prev) => {
+  //       const next = { ...prev };
+  //       let hasChanges = false;
+  //       for (const m of baseMigrations) {
+  //         const current = next[m.id] ? { ...m, ...next[m.id] } : m;
+  //         if (
+  //           current.status === "RUNNING" &&
+  //           typeof current.recordsProcessed === "number" &&
+  //           typeof current.recordsTotal === "number" &&
+  //           current.recordsProcessed < current.recordsTotal
+  //         ) {
+  //           const increment = Math.floor(Math.random() * 250) + 150;
+  //           const newProcessed = Math.min(
+  //             current.recordsTotal,
+  //             current.recordsProcessed + increment,
+  //           );
+  //           const failedIncrement =
+  //             Math.random() > 0.85 ? Math.floor(Math.random() * 3) : 0;
+  //           const newSucceeded =
+  //             (current.recordsSucceeded || 0) + (increment - failedIncrement);
+  //           const newFailed = (current.recordsFailed || 0) + failedIncrement;
+  //           const newProgress = Number(
+  //             ((newProcessed / current.recordsTotal) * 100).toFixed(1),
+  //           );
 
-            next[m.id] = {
-              ...(next[m.id] || {}),
-              recordsProcessed: newProcessed,
-              recordsSucceeded: newSucceeded,
-              recordsFailed: newFailed,
-              progress: newProgress,
-              status:
-                newProcessed >= current.recordsTotal ? "COMPLETED" : "RUNNING",
-            };
-            hasChanges = true;
-          }
-        }
-        return hasChanges ? next : prev;
-      });
-    }, 3500);
+  //           next[m.id] = {
+  //             ...(next[m.id] || {}),
+  //             recordsProcessed: newProcessed,
+  //             recordsSucceeded: newSucceeded,
+  //             recordsFailed: newFailed,
+  //             progress: newProgress,
+  //             status:
+  //               newProcessed >= current.recordsTotal ? "COMPLETED" : "RUNNING",
+  //           };
+  //           hasChanges = true;
+  //         }
+  //       }
+  //       return hasChanges ? next : prev;
+  //     });
+  //   }, 3500);
 
-    return () => clearInterval(interval);
-  }, [baseMigrations]);
+  //   return () => clearInterval(interval);
+  // }, [baseMigrations]);
 
   return (
     <DataContext.Provider
@@ -688,14 +493,15 @@ export function DataProvider({ children }) {
         connections,
         addConnection,
         testConnection,
-        migrations,
-        isMigrationsLoading,
-        refetchMigrations,
-        addMigration,
-        startMigration,
-        pauseMigration,
-        resumeMigration,
-        cancelMigration,
+        // migrations,
+        // isMigrationsLoading,
+        // refetchMigrations,
+        // addMigration,
+        // startMigration,
+        // pauseMigration,
+        // resumeMigration,
+        // cancelMigration,
+        // deleteMigration,
         activities,
         addActivity,
         logs,

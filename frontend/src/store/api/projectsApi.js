@@ -1,33 +1,51 @@
-import { baseApi } from './baseApi'
+import { setCredentials } from "../slices/authSlice";
+import { baseApi } from "./baseApi";
 
 export const projectsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getProjects: builder.query({
       query: (organizationId) => {
-        const params = organizationId ? `?organizationId=${organizationId}` : ''
-        return `/organization/projects${params}`
+        const params = organizationId
+          ? `?organizationId=${organizationId}`
+          : "";
+        return `/organization/projects${params}`;
       },
       transformResponse: (response) => {
-        return response?.projects || []
+        return response?.projects || [];
+      },
+      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          console.log(data);
+          console.log(data[0].organizationId);
+
+          dispatch(
+            setCredentials({
+              organizationId: data[0]?.organizationId,
+            }),
+          );
+        } catch {
+          // Component handles errors
+        }
       },
       providesTags: (result) =>
         result
           ? [
-              ...result.map(({ id }) => ({ type: 'Project', id })),
-              { type: 'Project', id: 'LIST' },
+              ...result.map(({ id }) => ({ type: "Project", id })),
+              { type: "Project", id: "LIST" },
             ]
-          : [{ type: 'Project', id: 'LIST' }],
+          : [{ type: "Project", id: "LIST" }],
     }),
 
     createProject: builder.mutation({
       query: (projectData) => ({
-        url: '/organization/projects/create',
-        method: 'POST',
+        url: "/organization/projects/create",
+        method: "POST",
         body: projectData,
       }),
-      invalidatesTags: [{ type: 'Project', id: 'LIST' }],
+      invalidatesTags: [{ type: "Project", id: "LIST" }],
     }),
   }),
-})
+});
 
-export const { useGetProjectsQuery, useCreateProjectMutation } = projectsApi
+export const { useGetProjectsQuery, useCreateProjectMutation } = projectsApi;

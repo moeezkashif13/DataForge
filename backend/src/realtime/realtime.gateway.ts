@@ -212,7 +212,7 @@ export class RealtimeGateway
       }
 
       // Automatically check and dispatch pending migrations for this agent
-      await this.dispatchPendingMigrations(client, agentId, organizationId);
+      // await this.dispatchPendingMigrations(client, agentId, organizationId);
 
       return true;
     } catch (error: any) {

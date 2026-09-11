@@ -1,36 +1,62 @@
-import { baseApi } from './baseApi'
+import { baseApi } from "./baseApi";
 
 export const migrationsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getMigrations: builder.query({
-      query: (projectId) => {
-        const params = projectId ? `?projectId=${projectId}` : ''
-        return `/migrations${params}`
-      },
+      // query: (projectId) => {
+      //   const params = projectId ? `?projectId=${projectId}` : "";
+      //   return `${import.meta.env.VITE_BACKEND_URL}/migrations${params}`;
+      // },
+      query: (id) => `/migrations`,
+
       transformResponse: (response) => {
-        return response?.migrations || []
+        return response?.migrations || [];
       },
       providesTags: (result) =>
         result
           ? [
-              ...result.map(({ id }) => ({ type: 'Migration', id })),
-              { type: 'Migration', id: 'LIST' },
+              ...result.map(({ id }) => ({ type: "Migration", id })),
+              { type: "Migration", id: "LIST" },
             ]
-          : [{ type: 'Migration', id: 'LIST' }],
+          : [{ type: "Migration", id: "LIST" }],
+    }),
+
+    getMigrationById: builder.query({
+      query: (id) => `/migrations/${id}`,
+      transformResponse: (response) => {
+        return response?.migration || null;
+      },
+      providesTags: (result, error, id) => [{ type: "Migration", id }],
     }),
 
     createMigration: builder.mutation({
       query: (migrationData) => ({
-        url: '/migrations/create',
-        method: 'POST',
+        url: "/migrations/create",
+        method: "POST",
         body: migrationData,
       }),
       invalidatesTags: [
-        { type: 'Migration', id: 'LIST' },
-        { type: 'Project', id: 'LIST' },
+        { type: "Migration", id: "LIST" },
+        { type: "Project", id: "LIST" },
+      ],
+    }),
+
+    deleteMigration: builder.mutation({
+      query: (migrationId) => ({
+        url: `/migrations/${migrationId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: [
+        { type: "Migration", id: "LIST" },
+        { type: "Project", id: "LIST" },
       ],
     }),
   }),
-})
+});
 
-export const { useGetMigrationsQuery, useCreateMigrationMutation } = migrationsApi
+export const {
+  useGetMigrationsQuery,
+  useGetMigrationByIdQuery,
+  useCreateMigrationMutation,
+  useDeleteMigrationMutation,
+} = migrationsApi;

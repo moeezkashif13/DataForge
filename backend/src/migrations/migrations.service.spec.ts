@@ -10,6 +10,8 @@ import { Migration, MigrationStatus } from '../../models/migration.model';
 import { Project } from '../../models/project.model';
 import { ProjectUser } from '../../models/project-user.model';
 import { User } from '../../models/user.model';
+import { Organization } from '../../models/organization.model';
+import { OrganizationUser } from '../../models/organization-user.model';
 import { CreateMigrationDto } from './dto/create-migration.dto';
 
 describe('MigrationsService', () => {
@@ -18,6 +20,8 @@ describe('MigrationsService', () => {
   let mockProjectModel: any;
   let mockProjectUserModel: any;
   let mockUserModel: any;
+  let mockOrganizationUserModel: any;
+  let mockOrganizationModel: any;
 
   beforeEach(async () => {
     mockMigrationModel = {
@@ -35,6 +39,15 @@ describe('MigrationsService', () => {
     };
 
     mockUserModel = {
+      findByPk: jest.fn(),
+    };
+
+    mockOrganizationUserModel = {
+      findOne: jest.fn(),
+      findAll: jest.fn(),
+    };
+
+    mockOrganizationModel = {
       findByPk: jest.fn(),
     };
 
@@ -56,6 +69,14 @@ describe('MigrationsService', () => {
         {
           provide: getModelToken(User),
           useValue: mockUserModel,
+        },
+        {
+          provide: getModelToken(OrganizationUser),
+          useValue: mockOrganizationUserModel,
+        },
+        {
+          provide: getModelToken(Organization),
+          useValue: mockOrganizationModel,
         },
       ],
     }).compile();
@@ -159,6 +180,87 @@ describe('MigrationsService', () => {
       await expect(service.getMigrationById('nonexistent')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('deleteMigration', () => {
+    it('should successfully delete migration if user is an assigned project member', async () => {
+      const mockDestroy = jest.fn().mockResolvedValue(true);
+      mockMigrationModel.findByPk.mockResolvedValue({
+        id: 'mig-001',
+        projectId: 'proj-123',
+        project: { id: 'proj-123', organizationId: 'org-1' },
+        destroy: mockDestroy,
+      });
+      mockProjectUserModel.findOne.mockResolvedValue({
+        projectId: 'proj-123',
+        userId: 'user-123',
+      });
+
+      const result = await service.deleteMigration('mig-001', 'user-123');
+
+      expect(mockMigrationModel.findByPk).toHaveBeenCalledWith('mig-001', expect.any(Object));
+      expect(mockProjectUserModel.findOne).toHaveBeenCalledWith({
+        where: { projectId: 'proj-123', userId: 'user-123' },
+      });
+      expect(mockDestroy).toHaveBeenCalled();
+      expect(result).toEqual({
+        success: true,
+        message: 'Migration deleted successfully',
+      });
+    });
+
+    it('should successfully delete migration if user is an organization admin', async () => {
+      const mockDestroy = jest.fn().mockResolvedValue(true);
+      mockMigrationModel.findByPk.mockResolvedValue({
+        id: 'mig-001',
+        projectId: 'proj-123',
+        project: { id: 'proj-123', organizationId: 'org-1' },
+        destroy: mockDestroy,
+      });
+      mockProjectUserModel.findOne.mockResolvedValue(null);
+      mockOrganizationUserModel.findOne.mockResolvedValue({
+        organizationId: 'org-1',
+        userId: 'user-admin',
+        role: 'admin',
+      });
+
+      const result = await service.deleteMigration('mig-001', 'user-admin');
+
+      expect(mockDestroy).toHaveBeenCalled();
+      expect(result).toEqual({
+        success: true,
+        message: 'Migration deleted successfully',
+      });
+    });
+
+    it('should reject with ForbiddenException if user is NOT a member of the project', async () => {
+      mockMigrationModel.findByPk.mockResolvedValue({
+        id: 'mig-001',
+        projectId: 'proj-123',
+        project: { id: 'proj-123', organizationId: 'org-1' },
+        destroy: jest.fn(),
+      });
+      mockProjectUserModel.findOne.mockResolvedValue(null);
+      mockOrganizationUserModel.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.deleteMigration('mig-001', 'user-outsider'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should reject with NotFoundException if migration does not exist', async () => {
+      mockMigrationModel.findByPk.mockResolvedValue(null);
+
+      await expect(
+        service.deleteMigration('mig-nonexistent', 'user-123'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should reject with UnauthorizedException if userId is empty', async () => {
+      await expect(
+        service.deleteMigration('mig-001', ''),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 });

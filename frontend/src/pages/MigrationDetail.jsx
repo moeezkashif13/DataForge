@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, Link } from 'react-router'
+import { useParams, Link, useNavigate } from 'react-router'
 import {
   ArrowRightLeft,
   Play,
@@ -19,7 +19,14 @@ import {
   ShieldCheck,
   RotateCcw,
   Sparkles,
+  Trash2,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react'
+import {
+  useGetMigrationByIdQuery,
+  useDeleteMigrationMutation,
+} from '../store/api/migrationsApi'
 import { useData } from '../context/DataContext'
 import { Breadcrumbs } from '../components/ui/Breadcrumbs'
 import { StatusBadge } from '../components/ui/StatusBadge'
@@ -28,18 +35,20 @@ import { useToast } from '../context/ToastContext'
 
 export default function MigrationDetail() {
   const { migrationId } = useParams()
-  const { migrations, startMigration, pauseMigration, resumeMigration, cancelMigration, logs } = useData()
+  const navigate = useNavigate()
+  const { data: migration, isLoading, isError } = useGetMigrationByIdQuery(migrationId)
+  const [deleteMigration, { isLoading: isDeleting }] = useDeleteMigrationMutation()
+  const { startMigration, pauseMigration, resumeMigration, cancelMigration, logs } = useData()
   const { showToast } = useToast()
 
   const [activeTab, setActiveTab] = useState('Overview')
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [logFilter, setLogFilter] = useState('ALL')
   const [logSearch, setLogSearch] = useState('')
   const [autoScroll, setAutoScroll] = useState(true)
 
   const logContainerRef = useRef(null)
-
-  const migration = migrations.find((m) => m.id === migrationId) || migrations[0]
 
   // Auto-scroll logs
   useEffect(() => {
@@ -55,6 +64,48 @@ export default function MigrationDetail() {
     const matchSearch = l.message.toLowerCase().includes(logSearch.toLowerCase()) || l.source.toLowerCase().includes(logSearch.toLowerCase())
     return matchLevel && matchSearch
   })
+
+  const handleConfirmDelete = async () => {
+    if (!migration) return
+    try {
+      await deleteMigration(migration.id).unwrap()
+      showToast('Migration Deleted', `Migration "${migration.name}" was deleted successfully.`, 'success')
+      setIsDeleteModalOpen(false)
+      navigate('/migrations')
+    } catch (err) {
+      showToast('Delete Failed', err?.data?.message || err?.message || 'Failed to delete migration', 'error')
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center p-24">
+        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+        <p className="text-xs text-slate-500 mt-3 font-medium">Loading migration details...</p>
+      </div>
+    )
+  }
+
+  if (isError || !migration) {
+    return (
+      <div className="space-y-6">
+        <Breadcrumbs items={[{ label: 'Migrations', to: '/migrations' }, { label: 'Not Found' }]} />
+        <div className="flex flex-col items-center justify-center p-16 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
+          <AlertCircle className="w-8 h-8 text-rose-500 mb-2" />
+          <p className="text-base font-bold text-slate-900 dark:text-white">Migration Not Found</p>
+          <p className="text-xs text-slate-500 mt-1 max-w-sm">
+            The requested migration could not be found or you do not have permission to view it.
+          </p>
+          <Link
+            to="/migrations"
+            className="mt-4 px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white"
+          >
+            Back to Migrations
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   const copyLogs = () => {
     const text = filteredLogs.map((l) => `[${l.time}] ${l.level} (${l.source}): ${l.message}`).join('\n')
@@ -168,6 +219,16 @@ export default function MigrationDetail() {
               <CheckCircle2 className="w-4 h-4" /> Finished Successfully
             </span>
           )}
+
+          <button
+            type="button"
+            onClick={() => setIsDeleteModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-400 active:scale-95 transition-all"
+            title="Delete migration"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete</span>
+          </button>
         </div>
       </div>
 
@@ -513,6 +574,17 @@ export default function MigrationDetail() {
           setIsCancelModalOpen(false)
         }}
         onCancel={() => setIsCancelModalOpen(false)}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={isDeleteModalOpen}
+        title="Delete this migration?"
+        description={`Are you sure you want to delete "${migration?.name}"? This action cannot be undone and will permanently remove this migration.`}
+        confirmLabel={isDeleting ? "Deleting..." : "Delete Migration"}
+        isDestructive={true}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setIsDeleteModalOpen(false)}
       />
     </div>
   )

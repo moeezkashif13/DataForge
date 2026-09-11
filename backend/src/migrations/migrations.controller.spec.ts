@@ -11,6 +11,7 @@ describe('MigrationsController', () => {
   beforeEach(async () => {
     mockMigrationsService = {
       createMigration: jest.fn(),
+      deleteMigration: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -55,6 +56,34 @@ describe('MigrationsController', () => {
         message: 'Migration created successfully',
         data: createdMigration,
       });
+    });
+  });
+
+  describe('deleteMigration', () => {
+    it('should delete a migration and return 200 status response', async () => {
+      const user = { id: 'user-123' };
+      const deleteResult = {
+        success: true,
+        message: 'Migration deleted successfully',
+      };
+
+      mockMigrationsService.deleteMigration.mockResolvedValue(deleteResult);
+
+      const response = await controller.deleteMigration('mig-1', user);
+
+      expect(mockMigrationsService.deleteMigration).toHaveBeenCalledWith(
+        'mig-1',
+        user.id,
+      );
+      expect(response).toEqual({
+        statusCode: HttpStatus.OK,
+        message: 'Migration deleted successfully',
+        data: deleteResult,
+      });
+    });
+
+    it('should throw UnauthorizedException if user is not authenticated', async () => {
+      await expect(controller.deleteMigration('mig-1', null)).rejects.toThrow();
     });
   });
 });

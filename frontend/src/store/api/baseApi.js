@@ -3,14 +3,6 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: import.meta.env.VITE_BACKEND_URL,
   credentials: "include",
-  prepareHeaders: (headers, { getState }) => {
-    const token =
-      getState()?.auth?.token || localStorage.getItem("dataforge_token");
-    if (token) {
-      headers.set("authorization", `Bearer ${token}`);
-    }
-    return headers;
-  },
 });
 
 export const baseApi = createApi({

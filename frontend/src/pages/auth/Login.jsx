@@ -1,42 +1,47 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
-import { ArrowRight, KeyRound, AlertCircle } from 'lucide-react'
-import { useToast } from '../../context/ToastContext'
-import { useLoginMutation } from '../../store/api/authApi'
+import { useState } from "react";
+import { Link, useNavigate } from "react-router";
+import { ArrowRight, KeyRound, AlertCircle } from "lucide-react";
+import { useToast } from "../../context/ToastContext";
+import { useLoginMutation } from "../../store/api/authApi";
 
 export default function Login() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [rememberMe, setRememberMe] = useState(true)
-  const [errorMsg, setErrorMsg] = useState('')
-  const [login, { isLoading }] = useLoginMutation()
-  const navigate = useNavigate()
-  const { showToast } = useToast()
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [login, { isLoading }] = useLoginMutation();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setErrorMsg('')
+    e.preventDefault();
+    setErrorMsg("");
     try {
-      const res = await login({ email: email.trim(), password }).unwrap()
-      const displayName = res?.user?.name || res?.user?.firstName || res?.user?.email || 'User'
-      showToast('Signed in', `Welcome back, ${displayName}`, 'success')
-      navigate('/dashboard')
+      const res = await login({ email: email.trim(), password }).unwrap();
+      const displayName =
+        res?.user?.name || res?.user?.firstName || res?.user?.email || "User";
+      showToast("Signed in", `Welcome back, ${displayName}`, "success");
+      navigate("/dashboard");
     } catch (err) {
       const msg =
         err?.data?.message ||
         err?.data?.error ||
         err?.message ||
-        'Invalid email or password. Please verify your credentials.'
-      setErrorMsg(typeof msg === 'string' ? msg : JSON.stringify(msg))
-      showToast('Authentication Failed', typeof msg === 'string' ? msg : 'Please check your credentials', 'error')
+        "Invalid email or password. Please verify your credentials.";
+      setErrorMsg(typeof msg === "string" ? msg : JSON.stringify(msg));
+      showToast(
+        "Authentication Failed",
+        typeof msg === "string" ? msg : "Please check your credentials",
+        "error",
+      );
     }
-  }
+  };
 
   const fillDemo = () => {
-    setEmail('admin@company.com')
-    setPassword('Admin123456!')
-    showToast('Demo Credentials Filled', 'Click "Sign in" to test', 'info')
-  }
+    setEmail("moeezkashif13@gmail.com");
+    setPassword("Hello@12");
+    showToast("Demo Credentials Filled", 'Click "Sign in" to test', "info");
+  };
 
   return (
     <div className="space-y-6">
@@ -101,7 +106,9 @@ export default function Login() {
               onChange={(e) => setRememberMe(e.target.checked)}
               className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
             />
-            <span className="text-xs text-slate-600 dark:text-slate-400">Remember me</span>
+            <span className="text-xs text-slate-600 dark:text-slate-400">
+              Remember me
+            </span>
           </label>
           <button
             type="button"
@@ -130,11 +137,14 @@ export default function Login() {
       </form>
 
       <div className="pt-2 text-center text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800">
-        Don&apos;t have an account?{' '}
-        <Link to="/register" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+        Don&apos;t have an account?{" "}
+        <Link
+          to="/register"
+          className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+        >
           Create workspace
         </Link>
       </div>
     </div>
-  )
+  );
 }

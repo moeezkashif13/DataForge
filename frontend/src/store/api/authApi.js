@@ -1,25 +1,26 @@
-import { baseApi } from './baseApi'
-import { setCredentials, logOut, setSessionChecked } from '../slices/authSlice'
+import { baseApi } from "./baseApi";
+import { setCredentials, logOut, setSessionChecked } from "../slices/authSlice";
 
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     login: builder.mutation({
       query: (credentials) => ({
-        url: '/api/auth/sign-in/email',
-        method: 'POST',
+        url: "/api/auth/sign-in/email",
+        method: "POST",
         body: credentials,
       }),
-      invalidatesTags: ['Auth', 'User'],
+      invalidatesTags: ["Auth", "User"],
       async onQueryStarted(arg, { dispatch, queryFulfilled }) {
         try {
-          const { data } = await queryFulfilled
+          const { data } = await queryFulfilled;
+          console.log(data);
+
           dispatch(
             setCredentials({
               user: data?.user,
-              token: data?.token,
               session: data?.session,
-            })
-          )
+            }),
+          );
         } catch {
           // Component handles errors
         }
@@ -28,22 +29,21 @@ export const authApi = baseApi.injectEndpoints({
 
     registerOrganization: builder.mutation({
       query: (orgData) => ({
-        url: '/organization/register',
-        method: 'POST',
+        url: "/organization/register",
+        method: "POST",
         body: orgData,
       }),
-      invalidatesTags: ['Auth', 'User', 'Organization'],
+      invalidatesTags: ["Auth", "User", "Organization"],
       async onQueryStarted(arg, { dispatch, queryFulfilled }) {
         try {
-          const { data } = await queryFulfilled
+          const { data } = await queryFulfilled;
           dispatch(
             setCredentials({
               user: data?.user,
-              token: data?.token,
               session: data?.session,
               organizationId: data?.organizationId,
-            })
-          )
+            }),
+          );
         } catch {
           // Component handles errors
         }
@@ -51,60 +51,59 @@ export const authApi = baseApi.injectEndpoints({
     }),
 
     getSession: builder.query({
-      query: () => '/api/auth/get-session',
-      providesTags: ['Auth'],
+      query: () => "/api/auth/get-session",
+      providesTags: ["Auth"],
       async onQueryStarted(arg, { dispatch, queryFulfilled }) {
         try {
-          const { data } = await queryFulfilled
-          dispatch(setSessionChecked(data))
+          const { data } = await queryFulfilled;
+          dispatch(setSessionChecked(data));
         } catch {
-          dispatch(setSessionChecked(null))
+          dispatch(setSessionChecked(null));
         }
       },
     }),
 
     logout: builder.mutation({
       query: () => ({
-        url: '/api/auth/sign-out',
-        method: 'POST',
+        url: "/api/auth/sign-out",
+        method: "POST",
         body: {},
       }),
-      invalidatesTags: ['Auth', 'User'],
+      invalidatesTags: ["Auth", "User"],
       async onQueryStarted(arg, { dispatch, queryFulfilled }) {
         try {
-          await queryFulfilled
+          await queryFulfilled;
         } finally {
-          dispatch(logOut())
-          dispatch(baseApi.util.resetApiState())
+          dispatch(logOut());
+          dispatch(baseApi.util.resetApiState());
         }
       },
     }),
 
     acceptInvitation: builder.mutation({
       query: (payload) => ({
-        url: '/organization/accept-invitation',
-        method: 'POST',
+        url: "/organization/accept-invitation",
+        method: "POST",
         body: payload,
       }),
-      invalidatesTags: ['Auth', 'User', 'Organization'],
+      invalidatesTags: ["Auth", "User", "Organization"],
       async onQueryStarted(arg, { dispatch, queryFulfilled }) {
         try {
-          const { data } = await queryFulfilled
+          const { data } = await queryFulfilled;
           dispatch(
             setCredentials({
               user: data?.user,
-              token: data?.token,
               session: data?.session,
               organizationId: data?.organizationId,
-            })
-          )
+            }),
+          );
         } catch {
           // Component handles errors
         }
       },
     }),
   }),
-})
+});
 
 export const {
   useLoginMutation,
@@ -112,4 +111,4 @@ export const {
   useGetSessionQuery,
   useLogoutMutation,
   useAcceptInvitationMutation,
-} = authApi
+} = authApi;

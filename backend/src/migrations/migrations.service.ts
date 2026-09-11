@@ -36,12 +36,17 @@ export class MigrationsService {
   ) {}
 
   formatMigration(migration: Migration) {
-    const data = migration.get ? migration.get({ plain: true }) : (migration as any);
+    const data = migration.get
+      ? migration.get({ plain: true })
+      : (migration as any);
 
     let uiStatus = 'RUNNING';
     if (data.status === MigrationStatus.PAUSED || data.status === 'paused') {
       uiStatus = 'PAUSED';
-    } else if (data.status === MigrationStatus.ACTIVE || data.status === 'active') {
+    } else if (
+      data.status === MigrationStatus.ACTIVE ||
+      data.status === 'active'
+    ) {
       uiStatus = 'RUNNING';
     } else if (data.status) {
       uiStatus = String(data.status).toUpperCase();
@@ -262,6 +267,55 @@ export class MigrationsService {
     return migration;
   }
 
+  async getMigrationDetails(id: string, userId: string) {
+    if (!userId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    const migration = await this.migrationModel.findByPk(id, {
+      include: [
+        {
+          model: Project,
+          attributes: ['id', 'name', 'organizationId'],
+        },
+        {
+          model: User,
+          attributes: ['id', 'name', 'email'],
+        },
+      ],
+    });
+
+    if (!migration) {
+      throw new NotFoundException(`Migration with ID ${id} not found`);
+    }
+
+    // Verify user is a member of this project or an organization admin
+    const projectMembership = await this.projectUserModel.findOne({
+      where: {
+        projectId: migration.projectId,
+        userId,
+      },
+    });
+
+    const orgAdmin = migration.project?.organizationId
+      ? await this.organizationUserModel.findOne({
+          where: {
+            organizationId: migration.project.organizationId,
+            userId,
+            role: 'admin',
+          },
+        })
+      : null;
+
+    if (!projectMembership && !orgAdmin) {
+      throw new ForbiddenException(
+        'You do not have permission to view this migration',
+      );
+    }
+
+    return this.formatMigration(migration);
+  }
+
   async getMigrationsByProject(projectId: string): Promise<Migration[]> {
     return this.migrationModel.findAll({
       where: { projectId },
@@ -273,5 +327,48 @@ export class MigrationsService {
       ],
       order: [['createdAt', 'DESC']],
     });
+  }
+
+  async deleteMigration(
+    id: string,
+    userId: string,
+  ): Promise<{ success: boolean; message: string }> {
+    if (!userId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    const migration = await this.migrationModel.findByPk(id, {
+      include: [
+        {
+          model: Project,
+          attributes: ['id', 'organizationId'],
+        },
+      ],
+    });
+
+    if (!migration) {
+      throw new NotFoundException(`Migration with ID ${id} not found`);
+    }
+
+    // Verify user is a member of this project or an organization admin
+    const projectMembership = await this.projectUserModel.findOne({
+      where: {
+        projectId: migration.projectId,
+        userId,
+      },
+    });
+
+    if (!projectMembership) {
+      throw new ForbiddenException(
+        'Youa re not a member of this project. Migrations can only be deleted by assigned project members.',
+      );
+    }
+
+    await migration.destroy();
+
+    return {
+      success: true,
+      message: 'Migration deleted successfully',
+    };
   }
 }
