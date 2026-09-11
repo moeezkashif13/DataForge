@@ -9,7 +9,10 @@ import {
   Trash2,
   Loader2,
 } from "lucide-react";
-import { useGetProjectByIdQuery } from "../store/api/projectsApi";
+import {
+  useGetProjectByIdQuery,
+  useDeleteProjectMutation,
+} from "../store/api/projectsApi";
 import { Breadcrumbs } from "../components/ui/Breadcrumbs";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
@@ -39,6 +42,7 @@ export default function ProjectDetail() {
   const { data: apiProject, isLoading } = useGetProjectByIdQuery(projectId, {
     skip: !projectId,
   });
+  const [deleteProject, { isLoading: isDeleting }] = useDeleteProjectMutation();
 
   const [activeTab, setActiveTab] = useState("Overview");
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -104,13 +108,24 @@ export default function ProjectDetail() {
     { name: "Settings", icon: Settings },
   ];
 
-  const handleDeleteProject = () => {
-    showToast(
-      "Project Archived",
-      `Project "${project.name}" has been marked archived.`,
-      "warning",
-    );
-    navigate("/projects");
+  const handleDeleteProject = async () => {
+    if (!project?.id) return;
+    try {
+      await deleteProject(project.id).unwrap();
+      showToast(
+        "Project Deleted",
+        `Project "${project.name}" was deleted successfully.`,
+        "success",
+      );
+      setIsDeleteModalOpen(false);
+      navigate("/projects");
+    } catch (err) {
+      showToast(
+        "Delete Failed",
+        err?.data?.message || err?.message || "Failed to delete project",
+        "error",
+      );
+    }
   };
 
   if (isLoading) {
@@ -145,9 +160,9 @@ export default function ProjectDetail() {
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                 {project.name}
               </h1>
-              <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 uppercase">
+              {/* <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 uppercase">
                 {project.environment}
-              </span>
+              </span> */}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
               {project.description}
@@ -443,11 +458,12 @@ export default function ProjectDetail() {
               </p>
               <button
                 type="button"
+                disabled={isDeleting}
                 onClick={() => setIsDeleteModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-600 hover:bg-rose-700 text-white cursor-pointer disabled:opacity-50"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete Project</span>
+                <span>{isDeleting ? "Deleting..." : "Delete Project"}</span>
               </button>
             </div>
           </div>
@@ -459,7 +475,7 @@ export default function ProjectDetail() {
         isOpen={isDeleteModalOpen}
         title="Delete this project?"
         description={`Are you sure you want to delete "${project.name}"? Active migration jobs will be halted.`}
-        confirmLabel="Delete Project"
+        confirmLabel={isDeleting ? "Deleting..." : "Delete Project"}
         isDestructive={true}
         onConfirm={handleDeleteProject}
         onCancel={() => setIsDeleteModalOpen(false)}

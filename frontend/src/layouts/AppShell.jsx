@@ -467,15 +467,6 @@ export default function AppShell() {
                 <Moon className="w-4 h-4" />
               )}
             </button>
-
-            {/* Create Migration CTA */}
-            <Link
-              to="/migrations/new"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-all active:scale-95"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">New Migration</span>
-            </Link>
           </div>
         </header>
 

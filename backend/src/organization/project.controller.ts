@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpException,
   HttpStatus,
@@ -84,6 +85,33 @@ export class ProjectController {
         name: project.name,
         status: project.status,
         // associatedUsers,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Internal server error',
+        error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Delete(':id')
+  async deleteProject(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    if (!user?.id) {
+      throw new UnauthorizedException(
+        'Authentication required to delete a project',
+      );
+    }
+
+    try {
+      const result = await this.projectService.deleteProject(id, user.id);
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Project deleted successfully',
+        data: result,
       };
     } catch (error: any) {
       throw new HttpException(

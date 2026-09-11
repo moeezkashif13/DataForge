@@ -314,4 +314,46 @@ export class ProjectService {
       updatedAt: data.updatedAt,
     };
   }
+
+  async deleteProject(
+    projectId: string,
+    userId: string,
+  ): Promise<{ success: boolean; message: string }> {
+    if (!userId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    const project = await this.projectModel.findByPk(projectId);
+
+    if (!project) {
+      throw new NotFoundException(`Project with ID ${projectId} not found`);
+    }
+
+    const projectMembership = await this.projectUserModel.findOne({
+      where: {
+        projectId,
+        userId,
+      },
+    });
+
+    const orgMembership = await this.organizationUserModel.findOne({
+      where: {
+        organizationId: project.organizationId,
+        userId,
+      },
+    });
+
+    if (!projectMembership && !orgMembership) {
+      throw new ForbiddenException(
+        'You do not have permission to delete this project',
+      );
+    }
+
+    await project.destroy();
+
+    return {
+      success: true,
+      message: 'Project deleted successfully',
+    };
+  }
 }
