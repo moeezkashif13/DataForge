@@ -51,9 +51,12 @@ export class MigrationsService {
     } else if (data.status) {
       uiStatus = String(data.status).toUpperCase();
     }
-
-    const sourceLabel = data.source_path || 'production.customers (Dummy)';
-    const targetLabel = data.target_path || 'analytics.customers_v2 (Dummy)';
+    const sourceLabel =
+      data.source_table ||
+      data.source_database ||
+      data.source_file_path ||
+      'production.customers (Dummy)';
+    const targetLabel = 'analytics.customers_v2 (Dummy)';
 
     return {
       id: data.id,
@@ -63,8 +66,6 @@ export class MigrationsService {
         'Production customer records sync with field sanitization (Dummy)',
       projectId: data.projectId,
       projectName: data.project?.name || 'Customer Platform (Dummy)',
-      source_path: data.source_path,
-      target_path: data.target_path,
       sourceTargetLabel: `${sourceLabel} → ${targetLabel}`,
       sourceConnId: 'conn-pg-prod (Dummy)',
       sourceType: 'PostgreSQL (Dummy)',
@@ -110,7 +111,7 @@ export class MigrationsService {
       );
     }
 
-    const { projectId, name, description, source_path, target_path } = dto;
+    const { projectId, name, description } = dto;
 
     // 1. Verify target project exists
     const project = await this.projectModel.findByPk(projectId, {
@@ -160,8 +161,6 @@ export class MigrationsService {
       createdBy: creatorUserId,
       name,
       description: description ?? null,
-      source_path,
-      target_path,
       status: MigrationStatus.ACTIVE,
     } as any);
 

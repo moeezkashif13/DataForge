@@ -25,9 +25,6 @@ describe('RealtimeModule', () => {
         {
           id: 'mig-001',
           name: 'Users Table Migration',
-          description: 'Migrating legacy users',
-          source_path: 's3://source/db',
-          target_path: 's3://target/db',
           status: MigrationStatus.ACTIVE,
           projectId: 'proj-001',
           project: { name: 'Core DB Project' },

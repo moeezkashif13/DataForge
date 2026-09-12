@@ -20,14 +20,6 @@ export class CreateMigrationDto {
   @IsOptional()
   description?: string;
 
-  @IsString()
-  @IsNotEmpty()
-  source_path: string;
-
-  @IsString()
-  @IsNotEmpty()
-  target_path: string;
-
   // @IsEnum(MigrationStatus, {
   //   message: `status must be one of the following values: ${Object.values(MigrationStatus).join(', ')}`,
   // })

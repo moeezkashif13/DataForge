@@ -260,8 +260,6 @@ export class RealtimeGateway
         id: m.id,
         name: m.name,
         description: m.description,
-        sourcePath: m.source_path,
-        targetPath: m.target_path,
         status: m.status,
         projectId: m.projectId,
         projectName: m.project?.name || null,

@@ -39,19 +39,6 @@ export class Migration extends Model<Migration> {
   })
   declare description: string;
 
-  @Column({
-    type: DataType.STRING(1000),
-    allowNull: false,
-    field: 'source_path',
-  })
-  declare source_path: string;
-
-  @Column({
-    type: DataType.STRING(1000),
-    allowNull: false,
-    field: 'target_path',
-  })
-  declare target_path: string;
 
   @Column({
     type: DataType.ENUM(...Object.values(MigrationStatus)),

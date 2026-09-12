@@ -96,17 +96,18 @@ export default function ProjectDetail() {
   const projectMigrations =
     Array.isArray(apiProject?.migrations) && apiProject.migrations.length > 0
       ? apiProject.migrations.map((m) => {
-          const sourceLabel = m.source_path || "production.customers (Dummy)";
-          const targetLabel = m.target_path || "analytics.customers_v2 (Dummy)";
+          const sourceLabel =
+            m.source_table ||
+            m.source_database ||
+            m.source_file_path ||
+            "production.customers (Dummy)";
+          const targetLabel = "analytics.customers_v2 (Dummy)";
           return {
             id: m.id || "mig-unknown (Dummy)",
             name: m.name || "Untitled Migration (Dummy)",
             status: m.status || "RUNNING (Dummy)",
             sourceTargetLabel:
-              m.sourceTargetLabel ||
-              (m.source_path && m.target_path
-                ? `${m.source_path} → ${m.target_path}`
-                : `${sourceLabel} → ${targetLabel}`),
+              m.sourceTargetLabel || `${sourceLabel} → ${targetLabel}`,
             progress: typeof m.progress === "number" ? m.progress : 0,
           };
         })

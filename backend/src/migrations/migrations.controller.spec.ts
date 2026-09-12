@@ -36,8 +36,6 @@ describe('MigrationsController', () => {
       const dto = {
         projectId: 'proj-123',
         name: 'Migration A',
-        source_path: 's3://source',
-        target_path: 's3://dest',
         status: MigrationStatus.ACTIVE,
       };
       const user = { id: 'user-123' };

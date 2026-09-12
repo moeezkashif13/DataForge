@@ -270,16 +270,18 @@ export class ProjectService {
     const data = project.get({ plain: true });
     const migrationsList = Array.isArray(data.migrations)
       ? data.migrations.map((m: any) => {
-          const sourceLabel = m.source_path || 'production.customers (Dummy)';
-          const targetLabel = m.target_path || 'analytics.customers_v2 (Dummy)';
+          const sourceLabel =
+            m.source_table ||
+            m.source_database ||
+            m.source_file_path ||
+            'production.customers (Dummy)';
+          const targetLabel = 'analytics.customers_v2 (Dummy)';
           return {
             id: m.id,
             name: m.name || 'Customer Records Sync (Dummy)',
             description:
               m.description || 'Customer records sync pipeline (Dummy)',
             status: (m.status || 'RUNNING').toUpperCase(),
-            source_path: m.source_path,
-            target_path: m.target_path,
             sourceTargetLabel: `${sourceLabel} → ${targetLabel}`,
             progress: 78.2,
             createdAt: m.createdAt,
@@ -345,13 +347,6 @@ export class ProjectService {
     const orgMembership = await this.organizationUserModel.findOne({
       where: {
         organizationId: project.organizationId,
-        userId,
-      },
-    });
-
-    const projectMembership = await this.projectUserModel.findOne({
-      where: {
-        projectId,
         userId,
       },
     });
@@ -505,4 +500,3 @@ export class ProjectService {
     return { success: true, message: 'User removed from project' };
   }
 }
-

@@ -145,20 +145,11 @@ export default function CreateMigration() {
       return;
     }
 
-    const sourcePath =
-      sourceType === "CSV"
-        ? sourceCsvPath || "/var/data/exports/customers_dump.csv"
-        : `${sourceDatabase || "production"}.${sourceSchema || "public"}.${sourceTable || "customers"}`;
-
-    const targetPath = `${targetDatabase || "analytics"}.${targetSchema || "public"}.${targetTable || "customers_v2"}`;
-
     try {
       const res = await createMigration({
         projectId: proj.id,
         name: name?.trim() || "Customer Data Migration",
         description: description?.trim() || null,
-        source_path: sourcePath,
-        target_path: targetPath,
       }).unwrap();
 
       const createdMig = res?.data || res;

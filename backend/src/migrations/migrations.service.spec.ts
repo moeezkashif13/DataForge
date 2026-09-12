@@ -93,8 +93,6 @@ describe('MigrationsService', () => {
       projectId: 'proj-123',
       name: 'User Database Migration',
       description: 'Migrating legacy db to new Postgres schema',
-      source_path: 's3://old-bucket/dump.sql',
-      target_path: 's3://new-bucket/target/',
       status: MigrationStatus.ACTIVE,
     };
 
@@ -122,8 +120,6 @@ describe('MigrationsService', () => {
         createdBy: 'user-123',
         name: 'User Database Migration',
         description: 'Migrating legacy db to new Postgres schema',
-        source_path: 's3://old-bucket/dump.sql',
-        target_path: 's3://new-bucket/target/',
         status: MigrationStatus.ACTIVE,
       });
       expect(result.id).toBe('mig-001');
