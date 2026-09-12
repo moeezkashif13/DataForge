@@ -13,12 +13,11 @@ export const authApi = baseApi.injectEndpoints({
       async onQueryStarted(arg, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
-          console.log(data);
-
           dispatch(
             setCredentials({
               user: data?.user,
               session: data?.session,
+              token: data?.token || data?.session?.token,
             }),
           );
         } catch {
@@ -41,6 +40,7 @@ export const authApi = baseApi.injectEndpoints({
             setCredentials({
               user: data?.user,
               session: data?.session,
+              token: data?.token || data?.session?.token,
               organizationId: data?.organizationId,
             }),
           );
@@ -102,6 +102,7 @@ export const authApi = baseApi.injectEndpoints({
             setCredentials({
               user: data?.user,
               session: data?.session,
+              token: data?.token || data?.session?.token,
               organizationId: data?.organizationId,
             }),
           );

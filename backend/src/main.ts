@@ -19,6 +19,7 @@ async function bootstrap() {
   app.enableCors({
     origin: true,
     credentials: true,
+    exposedHeaders: ['set-auth-token'],
   });
 
   const authHandler = toNodeHandler(auth);

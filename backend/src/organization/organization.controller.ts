@@ -60,12 +60,16 @@ export class OrganizationController {
         userPassword,
       });
 
-      if (result.token) {
+      if (result.cookies && result.cookies.length > 0) {
+        res.setHeader('set-cookie', result.cookies);
+      } else if (result.token) {
         res.cookie(
           'better-auth.session_token',
           result.token,
           getSessionCookieOptions(),
         );
+      }
+      if (result.token) {
         res.setHeader('set-auth-token', result.token);
       }
 
@@ -240,12 +244,16 @@ export class OrganizationController {
         email,
       });
 
-      if (result.token) {
+      if (result.cookies && result.cookies.length > 0) {
+        res.setHeader('set-cookie', result.cookies);
+      } else if (result.token) {
         res.cookie(
           'better-auth.session_token',
           result.token,
           getSessionCookieOptions(),
         );
+      }
+      if (result.token) {
         res.setHeader('set-auth-token', result.token);
       }
 

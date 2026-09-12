@@ -43,26 +43,83 @@ export class OrganizationService {
     email: string;
     password: string;
   }) {
-    const signUp = await auth.api.signUpEmail({
-      body: {
-        name: `${input.firstName} ${input.lastName}`.trim(),
-        email: input.email,
-        password: input.password,
-        firstName: input.firstName,
-        lastName: input.lastName,
-      },
+    const normalizedEmail = input.email.trim().toLowerCase();
+
+    const existingUser = await this.userModel.findOne({
+      where: { email: normalizedEmail },
     });
 
-    const session = 'session' in signUp ? (signUp as any).session : null;
-    const token = ('token' in signUp && signUp.token) || session?.token || null;
+    let authResponse: any;
+    let authData: any;
+    let isNewUser = false;
+
+    if (existingUser) {
+      authResponse = await auth.api.signInEmail({
+        body: {
+          email: normalizedEmail,
+          password: input.password,
+        },
+        asResponse: true,
+      });
+      authData = await authResponse.json();
+    } else {
+      isNewUser = true;
+      authResponse = await auth.api.signUpEmail({
+        body: {
+          name: `${input.firstName} ${input.lastName}`.trim(),
+          email: normalizedEmail,
+          password: input.password,
+          firstName: input.firstName,
+          lastName: input.lastName,
+        },
+        asResponse: true,
+      });
+      authData = await authResponse.json();
+    }
+
+    if (!authData || !authData.user) {
+      throw new BadRequestException(
+        authData?.message || authData?.error || 'Authentication failed',
+      );
+    }
+
+    const token = authData.token || null;
+
+    let session: any = null;
+    if (token) {
+      try {
+        const sessionInfo = await auth.api.getSession({
+          headers: {
+            authorization: `Bearer ${token}`,
+          },
+        });
+        session = sessionInfo?.session || null;
+      } catch (err) {
+        console.warn('Failed to retrieve full session object via token:', err);
+      }
+    }
+
+    const cookies: string[] = [];
+    if (authResponse && authResponse.headers) {
+      if (typeof (authResponse.headers as any).getSetCookie === 'function') {
+        cookies.push(...(authResponse.headers as any).getSetCookie());
+      } else {
+        const setCookieHeader = authResponse.headers.get('set-cookie');
+        if (setCookieHeader) {
+          cookies.push(setCookieHeader);
+        }
+      }
+    }
 
     return {
-      id: signUp.user.id,
-      email: signUp.user.email,
-      name: signUp.user.name,
-      user: signUp.user,
+      id: authData.user.id,
+      email: authData.user.email,
+      name: authData.user.name,
+      user: authData.user,
       session,
       token,
+      cookies,
+      isNewUser,
     };
   }
 
@@ -138,11 +195,14 @@ export class OrganizationService {
           user: authResult.user,
           session: authResult.session,
           token: authResult.token,
+          cookies: authResult.cookies,
         };
       });
       return result;
     } catch (error) {
-      await this.rollbackUser(authResult.id);
+      if (authResult.isNewUser) {
+        await this.rollbackUser(authResult.id);
+      }
       throw error;
     }
   }
@@ -393,11 +453,14 @@ export class OrganizationService {
           user: authResult.user,
           session: authResult.session,
           token: authResult.token,
+          cookies: authResult.cookies,
         };
       });
       return result;
     } catch (error) {
-      await this.rollbackUser(authResult.id);
+      if (authResult.isNewUser) {
+        await this.rollbackUser(authResult.id);
+      }
       throw error;
     }
   }
