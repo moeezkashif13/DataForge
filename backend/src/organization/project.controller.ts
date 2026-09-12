@@ -120,4 +120,72 @@ export class ProjectController {
       );
     }
   }
+
+  @Post(':id/users')
+  async addUsersToProject(
+    @Param('id') projectId: string,
+    @Body() body: { userId?: string; userIds?: string[]; role?: string },
+    @CurrentUser() user: { id: string },
+  ) {
+    if (!user?.id) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    const userIds = body.userIds || (body.userId ? [body.userId] : []);
+    if (!userIds.length) {
+      throw new HttpException(
+        'userId or userIds is required',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    try {
+      const result = await this.projectService.addProjectUsers(
+        projectId,
+        userIds,
+        user.id,
+        body.role,
+      );
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'User(s) added to project successfully',
+        data: result,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Internal server error',
+        error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Delete(':id/users/:userId')
+  async removeUserFromProject(
+    @Param('id') projectId: string,
+    @Param('userId') targetUserId: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    if (!user?.id) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    try {
+      const result = await this.projectService.removeProjectUser(
+        projectId,
+        targetUserId,
+        user.id,
+      );
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: result.message,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Internal server error',
+        error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
 }

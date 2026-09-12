@@ -176,6 +176,12 @@ export class ProjectService {
           attributes: ['id'],
           required: false,
         },
+        {
+          model: ProjectUser,
+          where: { userId },
+          required: true,
+          attributes: ['id', 'role'],
+        },
       ],
     });
 
@@ -255,9 +261,9 @@ export class ProjectService {
       },
     });
 
-    if (!orgMembership && !projectMembership) {
+    if (!orgMembership || !projectMembership) {
       throw new ForbiddenException(
-        'You do not have permission to view this project',
+        'You do not have permission to view this project. You must be an assigned member of this project.',
       );
     }
 
@@ -343,9 +349,16 @@ export class ProjectService {
       },
     });
 
-    if (!projectMembership && !orgMembership) {
+    const projectMembership = await this.projectUserModel.findOne({
+      where: {
+        projectId,
+        userId,
+      },
+    });
+
+    if (!orgMembership || !projectMembership) {
       throw new ForbiddenException(
-        'You do not have permission to delete this project',
+        'You do not have permission to delete this project. You must be an assigned member of this project.',
       );
     }
 
@@ -356,4 +369,140 @@ export class ProjectService {
       message: 'Project deleted successfully',
     };
   }
+
+  async addProjectUsers(
+    projectId: string,
+    targetUserIds: string[],
+    currentUserId: string,
+    role: string = 'member',
+  ) {
+    if (!currentUserId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    const project = await this.projectModel.findByPk(projectId);
+    if (!project) {
+      throw new NotFoundException(`Project with ID ${projectId} not found`);
+    }
+
+    // Verify current user is an assigned member of this project
+    const currentProjectUser = await this.projectUserModel.findOne({
+      where: { projectId, userId: currentUserId },
+    });
+    const currentOrgUser = await this.organizationUserModel.findOne({
+      where: { organizationId: project.organizationId, userId: currentUserId },
+    });
+
+    if (!currentProjectUser || !currentOrgUser) {
+      throw new ForbiddenException(
+        'You do not have permission to add users to this project. You must be an assigned member of this project.',
+      );
+    }
+
+    const addedUsers: any[] = [];
+
+    for (const targetUserId of targetUserIds) {
+      // Verify target user is in the same organization
+      const targetOrgUser = await this.organizationUserModel.findOne({
+        where: {
+          organizationId: project.organizationId,
+          userId: targetUserId,
+        },
+        include: [
+          {
+            model: User,
+            attributes: ['id', 'name', 'email'],
+          },
+        ],
+      });
+
+      if (!targetOrgUser) {
+        continue;
+      }
+
+      // Check if already in project
+      const existing = await this.projectUserModel.findOne({
+        where: {
+          projectId,
+          userId: targetUserId,
+        },
+      });
+
+      if (existing) {
+        continue;
+      }
+
+      const newProjectUser = await this.projectUserModel.create({
+        projectId,
+        userId: targetUserId,
+        role: role || 'member',
+      } as any);
+
+      addedUsers.push({
+        id: newProjectUser.id,
+        userId: targetUserId,
+        role: newProjectUser.role,
+        name:
+          targetOrgUser.user?.name ||
+          targetOrgUser.user?.email?.split('@')[0] ||
+          'Member',
+        email: targetOrgUser.user?.email || '',
+        joinedAt: newProjectUser.createdAt,
+      });
+    }
+
+    return {
+      projectId,
+      addedUsers,
+    };
+  }
+
+  async removeProjectUser(
+    projectId: string,
+    targetUserId: string,
+    currentUserId: string,
+  ) {
+    if (!currentUserId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    const project = await this.projectModel.findByPk(projectId);
+    if (!project) {
+      throw new NotFoundException(`Project with ID ${projectId} not found`);
+    }
+
+    // Verify current user is an assigned member of this project
+    const currentProjectUser = await this.projectUserModel.findOne({
+      where: { projectId, userId: currentUserId },
+    });
+    const currentOrgUser = await this.organizationUserModel.findOne({
+      where: { organizationId: project.organizationId, userId: currentUserId },
+    });
+
+    if (!currentProjectUser || !currentOrgUser) {
+      throw new ForbiddenException(
+        'You do not have permission to remove users from this project. You must be an assigned member of this project.',
+      );
+    }
+
+    const membership = await this.projectUserModel.findOne({
+      where: {
+        projectId,
+        userId: targetUserId,
+      },
+    });
+
+    if (!membership) {
+      throw new NotFoundException('User is not a member of this project');
+    }
+
+    if (membership.role === 'creator') {
+      throw new BadRequestException('The project creator cannot be removed');
+    }
+
+    await membership.destroy();
+
+    return { success: true, message: 'User removed from project' };
+  }
 }
+

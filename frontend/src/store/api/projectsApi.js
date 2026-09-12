@@ -61,6 +61,29 @@ export const projectsApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [{ type: "Project", id: "LIST" }],
     }),
+
+    addProjectMember: builder.mutation({
+      query: ({ projectId, userId, userIds, role }) => ({
+        url: `/organization/projects/${projectId}/users`,
+        method: "POST",
+        body: { userId, userIds, role },
+      }),
+      invalidatesTags: (result, error, { projectId }) => [
+        { type: "Project", id: projectId },
+        { type: "Project", id: "LIST" },
+      ],
+    }),
+
+    removeProjectMember: builder.mutation({
+      query: ({ projectId, userId }) => ({
+        url: `/organization/projects/${projectId}/users/${userId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (result, error, { projectId }) => [
+        { type: "Project", id: projectId },
+        { type: "Project", id: "LIST" },
+      ],
+    }),
   }),
 });
 
@@ -69,4 +92,7 @@ export const {
   useGetProjectByIdQuery,
   useCreateProjectMutation,
   useDeleteProjectMutation,
+  useAddProjectMemberMutation,
+  useRemoveProjectMemberMutation,
 } = projectsApi;
+
