@@ -139,10 +139,10 @@ export default function AppShell() {
           </div>
           <div className="flex flex-col">
             <span className="text-base font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
-              DataRelay
-              <span className="text-[10px] uppercase font-mono px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 font-semibold border border-indigo-200 dark:border-indigo-800/60">
+              DataForge
+              {/* <span className="text-[10px] uppercase font-mono px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 font-semibold border border-indigo-200 dark:border-indigo-800/60">
                 SaaS
-              </span>
+              </span> */}
             </span>
             <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium tracking-tight">
               Control Plane

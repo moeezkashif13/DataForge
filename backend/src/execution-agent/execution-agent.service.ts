@@ -61,7 +61,7 @@ export class ExecutionAgentService {
       cpuUsage: '18% (Dummy)',
       memUsage: '1.4 GB / 8 GB (Dummy)',
       networkEgress: '48.2 MB/s (Dummy)',
-      dockerImage: 'datarelay/migration-agent:v1.4.2 (Dummy)',
+      dockerImage: 'dataforge/migration-agent:v1.4.2 (Dummy)',
       registeredAt: data.createdAt,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,

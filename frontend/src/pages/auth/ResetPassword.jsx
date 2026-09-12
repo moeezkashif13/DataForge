@@ -1,28 +1,32 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
-import { CheckCircle2 } from 'lucide-react'
-import { useToast } from '../../context/ToastContext'
+import { useState } from "react";
+import { Link, useNavigate } from "react-router";
+import { CheckCircle2 } from "lucide-react";
+import { useToast } from "../../context/ToastContext";
 
 export default function ResetPassword() {
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const navigate = useNavigate()
-  const { showToast } = useToast()
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const handleSubmit = (e) => {
-    e.preventDefault()
+    e.preventDefault();
     if (password !== confirmPassword) {
-      showToast('Validation Error', 'Passwords do not match.', 'error')
-      return
+      showToast("Validation Error", "Passwords do not match.", "error");
+      return;
     }
-    setIsLoading(true)
+    setIsLoading(true);
     setTimeout(() => {
-      setIsLoading(false)
-      showToast('Password Updated', 'Your credentials have been securely refreshed.', 'success')
-      navigate('/login')
-    }, 600)
-  }
+      setIsLoading(false);
+      showToast(
+        "Password Updated",
+        "Your credentials have been securely refreshed.",
+        "success",
+      );
+      navigate("/login");
+    }, 600);
+  };
 
   return (
     <div className="space-y-6">
@@ -31,7 +35,7 @@ export default function ResetPassword() {
           Reset your password
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Choose a secure new password for your DataRelay account.
+          Choose a secure new password for your DataForge account.
         </p>
       </div>
 
@@ -69,15 +73,18 @@ export default function ResetPassword() {
           disabled={isLoading}
           className="w-full py-2.5 px-4 rounded-xl font-semibold text-sm bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white shadow-md shadow-indigo-500/20 transition-all cursor-pointer"
         >
-          {isLoading ? 'Updating...' : 'Set new password'}
+          {isLoading ? "Updating..." : "Set new password"}
         </button>
       </form>
 
       <div className="pt-2 text-center border-t border-slate-100 dark:border-slate-800">
-        <Link to="/login" className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">
+        <Link
+          to="/login"
+          className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+        >
           Cancel and return to sign in
         </Link>
       </div>
     </div>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState } from "react";
 import {
   Database,
   Plus,
@@ -10,44 +10,46 @@ import {
   KeyRound,
   Lock,
   ExternalLink,
-} from 'lucide-react'
-import { useData } from '../context/DataContext'
-import { StatusBadge } from '../components/ui/StatusBadge'
-import { useToast } from '../context/ToastContext'
+} from "lucide-react";
+import { useData } from "../context/DataContext";
+import { StatusBadge } from "../components/ui/StatusBadge";
+import { useToast } from "../context/ToastContext";
 
 export default function Connections() {
-  const { connections, addConnection, testConnection } = useData()
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [testingId, setTestingId] = useState(null)
-  const [name, setName] = useState('')
-  const [type, setType] = useState('PostgreSQL')
-  const [host, setHost] = useState('')
-  const [database, setDatabase] = useState('')
-  const [vaultKey, setVaultKey] = useState('arn:aws:secretsmanager:us-east-1:123456:secret/db-creds')
-  const { showToast } = useToast()
+  const { connections, addConnection, testConnection } = useData();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [testingId, setTestingId] = useState(null);
+  const [name, setName] = useState("");
+  const [type, setType] = useState("PostgreSQL");
+  const [host, setHost] = useState("");
+  const [database, setDatabase] = useState("");
+  const [vaultKey, setVaultKey] = useState(
+    "arn:aws:secretsmanager:us-east-1:123456:secret/db-creds",
+  );
+  const { showToast } = useToast();
 
   const handleTest = async (connId) => {
-    setTestingId(connId)
-    await testConnection(connId)
-    setTestingId(null)
-  }
+    setTestingId(connId);
+    await testConnection(connId);
+    setTestingId(null);
+  };
 
   const handleCreate = (e) => {
-    e.preventDefault()
-    if (!name.trim()) return
+    e.preventDefault();
+    if (!name.trim()) return;
     addConnection({
       name: name.trim(),
       type,
-      host: host || 'internal-db-node.internal',
-      database: database || 'production',
-      managedBy: 'Vault / AWS Secrets Manager',
-      environment: 'Production',
-    })
-    setName('')
-    setHost('')
-    setDatabase('')
-    setIsModalOpen(false)
-  }
+      host: host || "internal-db-node.internal",
+      database: database || "production",
+      managedBy: "Vault / AWS Secrets Manager",
+      environment: "Production",
+    });
+    setName("");
+    setHost("");
+    setDatabase("");
+    setIsModalOpen(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -58,7 +60,8 @@ export default function Connections() {
             Data Connections
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Manage database and storage endpoints. Credentials remain quarantined inside your secret manager.
+            Manage database and storage endpoints. Credentials remain
+            quarantined inside your secret manager.
           </p>
         </div>
         <button
@@ -76,7 +79,9 @@ export default function Connections() {
         <div className="flex items-center gap-2.5">
           <Lock className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
           <span>
-            <strong>Zero-Knowledge Secrets:</strong> DataRelay never stores raw database passwords. All authentication resolves at runtime by the local customer-hosted agent.
+            <strong>Zero-Knowledge Secrets:</strong> DataForge never stores raw
+            database passwords. All authentication resolves at runtime by the
+            local customer-hosted agent.
           </span>
         </div>
         <span className="font-mono text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">
@@ -107,7 +112,9 @@ export default function Connections() {
               <div className="space-y-1.5 text-xs font-mono py-2 border-y border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-300">
                 <div className="flex justify-between">
                   <span className="text-slate-400">Host / Target</span>
-                  <span className="truncate max-w-[170px]">{conn.host || conn.filePath}</span>
+                  <span className="truncate max-w-[170px]">
+                    {conn.host || conn.filePath}
+                  </span>
                 </div>
                 {conn.database && (
                   <div className="flex justify-between">
@@ -117,7 +124,9 @@ export default function Connections() {
                 )}
                 <div className="flex justify-between">
                   <span className="text-slate-400">Latency</span>
-                  <span className="text-emerald-600 dark:text-emerald-400">{conn.latencyMs}ms</span>
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    {conn.latencyMs}ms
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Last Tested</span>
@@ -127,7 +136,9 @@ export default function Connections() {
 
               {/* Secret Manager Protection Indicator */}
               <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 text-[11px] space-y-1">
-                <span className="text-slate-400 font-semibold block">Credential Security</span>
+                <span className="text-slate-400 font-semibold block">
+                  Credential Security
+                </span>
                 <p className="text-slate-600 dark:text-slate-400 font-mono truncate">
                   Password: ••••••••••••
                 </p>
@@ -144,13 +155,23 @@ export default function Connections() {
                 disabled={testingId === conn.id}
                 className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors inline-flex items-center gap-1.5 active:scale-95"
               >
-                <RotateCcw className={`w-3.5 h-3.5 ${testingId === conn.id ? 'animate-spin' : ''}`} />
-                <span>{testingId === conn.id ? 'Probing...' : 'Test Connection'}</span>
+                <RotateCcw
+                  className={`w-3.5 h-3.5 ${testingId === conn.id ? "animate-spin" : ""}`}
+                />
+                <span>
+                  {testingId === conn.id ? "Probing..." : "Test Connection"}
+                </span>
               </button>
 
               <button
                 type="button"
-                onClick={() => showToast('Rotate Credential', 'Dispatching rotation request to your Secret Vault...', 'info')}
+                onClick={() =>
+                  showToast(
+                    "Rotate Credential",
+                    "Dispatching rotation request to your Secret Vault...",
+                    "info",
+                  )
+                }
                 className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
               >
                 Rotate
@@ -164,7 +185,9 @@ export default function Connections() {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
           <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">Add Connection Profile</h3>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Add Connection Profile
+            </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Configure connection parameters for internal database endpoints.
             </p>
@@ -225,7 +248,8 @@ export default function Connections() {
                   className="w-full px-3.5 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono text-xs"
                 />
                 <span className="text-[10px] text-slate-400 mt-0.5 block">
-                  Reference resolved by the agent locally. No credentials sent to SaaS.
+                  Reference resolved by the agent locally. No credentials sent
+                  to DataForge.
                 </span>
               </div>
 
@@ -249,5 +273,5 @@ export default function Connections() {
         </div>
       )}
     </div>
-  )
+  );
 }

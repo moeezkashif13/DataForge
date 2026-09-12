@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsEnum,
   IsNotEmpty,
   IsOptional,
@@ -28,6 +29,10 @@ export class CreateMigrationDto {
   @IsEnum(MigrationStatus)
   @IsOptional()
   status?: MigrationStatus;
+
+  @IsArray()
+  @IsNotEmpty()
+  mappings: any[];
 
   // Source Fields
   @IsOptional()

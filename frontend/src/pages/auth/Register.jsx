@@ -1,28 +1,29 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
-import { ArrowRight, AlertCircle } from 'lucide-react'
-import { useToast } from '../../context/ToastContext'
-import { useRegisterOrganizationMutation } from '../../store/api/authApi'
+import { useState } from "react";
+import { Link, useNavigate } from "react-router";
+import { ArrowRight, AlertCircle } from "lucide-react";
+import { useToast } from "../../context/ToastContext";
+import { useRegisterOrganizationMutation } from "../../store/api/authApi";
 
 export default function Register() {
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [org, setOrg] = useState('')
-  const [errorMsg, setErrorMsg] = useState('')
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [org, setOrg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const [registerOrganization, { isLoading }] = useRegisterOrganizationMutation()
-  const navigate = useNavigate()
-  const { showToast } = useToast()
+  const [registerOrganization, { isLoading }] =
+    useRegisterOrganizationMutation();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setErrorMsg('')
+    e.preventDefault();
+    setErrorMsg("");
 
     if (password.length < 8) {
-      setErrorMsg('Password must be at least 8 characters long.')
-      return
+      setErrorMsg("Password must be at least 8 characters long.");
+      return;
     }
 
     try {
@@ -32,20 +33,28 @@ export default function Register() {
         userLastName: lastName.trim(),
         userEmail: email.trim(),
         userPassword: password,
-      }).unwrap()
+      }).unwrap();
 
-      showToast('Workspace Created', `Welcome to DataRelay, ${org}!`, 'success')
-      navigate('/dashboard')
+      showToast(
+        "Workspace Created",
+        `Welcome to DataForge, ${org}!`,
+        "success",
+      );
+      navigate("/dashboard");
     } catch (err) {
       const msg =
         err?.data?.message ||
         err?.data?.error ||
         err?.message ||
-        'Failed to create workspace. Please try again.'
-      setErrorMsg(typeof msg === 'string' ? msg : JSON.stringify(msg))
-      showToast('Registration Failed', typeof msg === 'string' ? msg : 'Check registration fields', 'error')
+        "Failed to create workspace. Please try again.";
+      setErrorMsg(typeof msg === "string" ? msg : JSON.stringify(msg));
+      showToast(
+        "Registration Failed",
+        typeof msg === "string" ? msg : "Check registration fields",
+        "error",
+      );
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -54,7 +63,7 @@ export default function Register() {
           Create your workspace
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Start moving data securely with DataRelay.
+          Start moving data securely with DataForge.
         </p>
       </div>
 
@@ -154,11 +163,14 @@ export default function Register() {
       </form>
 
       <div className="pt-2 text-center text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800">
-        Already have an account?{' '}
-        <Link to="/login" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+        Already have an account?{" "}
+        <Link
+          to="/login"
+          className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+        >
           Sign in
         </Link>
       </div>
     </div>
-  )
+  );
 }

@@ -1,50 +1,65 @@
-import { useState, useRef, useEffect } from 'react'
-import { FileText, Search, Copy, Download, Filter, Terminal } from 'lucide-react'
-import { useData } from '../context/DataContext'
-import { useToast } from '../context/ToastContext'
+import { useState, useRef, useEffect } from "react";
+import {
+  FileText,
+  Search,
+  Copy,
+  Download,
+  Filter,
+  Terminal,
+} from "lucide-react";
+import { useData } from "../context/DataContext";
+import { useToast } from "../context/ToastContext";
 
 export default function Logs() {
-  const { logs } = useData()
-  const [levelFilter, setLevelFilter] = useState('ALL')
-  const [sourceFilter, setSourceFilter] = useState('ALL')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [autoScroll, setAutoScroll] = useState(false)
-  const { showToast } = useToast()
-  const containerRef = useRef(null)
+  const { logs } = useData();
+  const [levelFilter, setLevelFilter] = useState("ALL");
+  const [sourceFilter, setSourceFilter] = useState("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [autoScroll, setAutoScroll] = useState(false);
+  const { showToast } = useToast();
+  const containerRef = useRef(null);
 
-  const sources = ['ALL', ...new Set(logs.map((l) => l.source))]
+  const sources = ["ALL", ...new Set(logs.map((l) => l.source))];
 
   const filteredLogs = logs.filter((log) => {
-    const matchLevel = levelFilter === 'ALL' || log.level === levelFilter
-    const matchSource = sourceFilter === 'ALL' || log.source === sourceFilter
+    const matchLevel = levelFilter === "ALL" || log.level === levelFilter;
+    const matchSource = sourceFilter === "ALL" || log.source === sourceFilter;
     const matchSearch =
       log.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.source.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchLevel && matchSource && matchSearch
-  })
+      log.source.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchLevel && matchSource && matchSearch;
+  });
 
   useEffect(() => {
     if (autoScroll && containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
-  }, [logs, autoScroll])
+  }, [logs, autoScroll]);
 
   const copyLogs = () => {
-    const text = filteredLogs.map((l) => `[${l.time}] [${l.level}] [${l.source}] ${l.message}`).join('\n')
-    navigator.clipboard?.writeText(text)
-    showToast('Logs Copied', `${filteredLogs.length} lines copied to clipboard.`, 'info')
-  }
+    const text = filteredLogs
+      .map((l) => `[${l.time}] [${l.level}] [${l.source}] ${l.message}`)
+      .join("\n");
+    navigator.clipboard?.writeText(text);
+    showToast(
+      "Logs Copied",
+      `${filteredLogs.length} lines copied to clipboard.`,
+      "info",
+    );
+  };
 
   const downloadLogs = () => {
-    const text = filteredLogs.map((l) => `[${l.time}] [${l.level}] [${l.source}] ${l.message}`).join('\n')
-    const blob = new Blob([text], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `datarelay-logs-${Date.now()}.txt`
-    a.click()
-    showToast('Download Started', 'Exporting log file...', 'info')
-  }
+    const text = filteredLogs
+      .map((l) => `[${l.time}] [${l.level}] [${l.source}] ${l.message}`)
+      .join("\n");
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `dataforge-logs-${Date.now()}.txt`;
+    a.click();
+    showToast("Download Started", "Exporting log file...", "info");
+  };
 
   return (
     <div className="space-y-6">
@@ -55,7 +70,8 @@ export default function Logs() {
             Log Explorer
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Real-time telemetry and execution logs streamed from customer-hosted migration agents.
+            Real-time telemetry and execution logs streamed from customer-hosted
+            migration agents.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -140,31 +156,39 @@ export default function Logs() {
       {/* Terminal View Container */}
       <div className="rounded-2xl bg-slate-950 border border-slate-800 p-5 shadow-2xl font-mono text-xs text-slate-200 space-y-2">
         <div className="flex items-center justify-between pb-3 border-b border-slate-800/80 text-[11px] text-slate-500">
-          <span>Stream: /var/log/datarelay/control-plane.log</span>
+          <span>Stream: /var/log/dataforge/control-plane.log</span>
           <span>{filteredLogs.length} events matching filter</span>
         </div>
 
-        <div ref={containerRef} className="h-[460px] overflow-y-auto space-y-1 pr-2 select-text text-[11px]">
+        <div
+          ref={containerRef}
+          className="h-[460px] overflow-y-auto space-y-1 pr-2 select-text text-[11px]"
+        >
           {filteredLogs.map((log) => (
-            <div key={log.id} className="flex items-start gap-3 hover:bg-slate-900/60 py-0.5 px-1.5 rounded">
+            <div
+              key={log.id}
+              className="flex items-start gap-3 hover:bg-slate-900/60 py-0.5 px-1.5 rounded"
+            >
               <span className="text-slate-500 shrink-0">{log.time}</span>
               <span
                 className={`font-semibold shrink-0 w-12 ${
-                  log.level === 'INFO'
-                    ? 'text-cyan-400'
-                    : log.level === 'WARN'
-                    ? 'text-amber-400'
-                    : 'text-rose-400'
+                  log.level === "INFO"
+                    ? "text-cyan-400"
+                    : log.level === "WARN"
+                      ? "text-amber-400"
+                      : "text-rose-400"
                 }`}
               >
                 {log.level}
               </span>
               <span className="text-slate-400 shrink-0">[{log.source}]</span>
-              <span className="text-slate-200 flex-1 leading-relaxed">{log.message}</span>
+              <span className="text-slate-200 flex-1 leading-relaxed">
+                {log.message}
+              </span>
             </div>
           ))}
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -40,6 +40,7 @@ export enum MigrationTargetType {
     dynamicValidation(this: Migration) {
       Migration.validateSourceFields(this);
       Migration.validateTargetFields(this);
+      Migration.validateMappings(this);
     },
   },
 })
@@ -129,6 +130,14 @@ export class Migration extends Model<Migration> {
   declare target_table: string;
 
   @Column({
+    type: DataType.JSON,
+    allowNull: false,
+    defaultValue: [],
+    field: 'mappings',
+  })
+  declare mappings: any[];
+
+  @Column({
     type: DataType.ENUM(...Object.values(MigrationStatus)),
     allowNull: false,
     defaultValue: MigrationStatus.READY,
@@ -169,6 +178,7 @@ export class Migration extends Model<Migration> {
   static validateAllFields(instance: Migration) {
     Migration.validateSourceFields(instance);
     Migration.validateTargetFields(instance);
+    Migration.validateMappings(instance);
   }
 
   static validateSourceFields(instance: Migration) {
@@ -242,6 +252,12 @@ export class Migration extends Model<Migration> {
 
     if (!instance.target_table || !instance.target_table.trim()) {
       throw new Error('target_table is required and cannot be null');
+    }
+  }
+
+  static validateMappings(instance: Migration) {
+    if (instance.mappings === null || instance.mappings === undefined) {
+      throw new Error('mappings is required and cannot be null');
     }
   }
 }

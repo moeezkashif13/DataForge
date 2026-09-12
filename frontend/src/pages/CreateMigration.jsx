@@ -206,6 +206,15 @@ export default function CreateMigration() {
       return;
     }
 
+    if (!mappings || !Array.isArray(mappings) || mappings.length === 0) {
+      showToast(
+        "Missing Field Mappings",
+        "Please configure at least one field mapping in Step 4.",
+        "error",
+      );
+      return;
+    }
+
     const payload = {
       projectId: proj.id,
       name: name.trim(),
@@ -219,6 +228,7 @@ export default function CreateMigration() {
       target_schema: targetSchema?.trim() || "public",
       target_database: targetDatabase.trim(),
       target_table: targetTable.trim(),
+      mappings: Array.isArray(mappings) ? mappings : [],
     };
 
     try {
@@ -807,7 +817,9 @@ export default function CreateMigration() {
                   {name}
                 </p>
                 <p className="font-mono text-slate-500">
-                  {sourceType === "CSV" || sourceType === "JSON" || sourceType === "S3"
+                  {sourceType === "CSV" ||
+                  sourceType === "JSON" ||
+                  sourceType === "S3"
                     ? `${sourceType} (${sourceCsvPath})`
                     : `${sourceType} (${sourceDatabase}.${sourceTable})`}
                 </p>
@@ -821,7 +833,7 @@ export default function CreateMigration() {
 
               <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
                 <span className="text-slate-400 uppercase font-semibold text-[10px]">
-                  Execution Parameters
+                  Pipeline Summary
                 </span>
                 <p className="font-semibold text-slate-900 dark:text-white">
                   Agent:{" "}
@@ -843,7 +855,7 @@ export default function CreateMigration() {
             <div className="p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
               <span>
-                DataRelay will orchestrate and monitor progress, but your data
+                DataForge will orchestrate and monitor progress, but your data
                 stays securely within your VPC.
               </span>
             </div>

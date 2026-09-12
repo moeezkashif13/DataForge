@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
-import { useParams, Link, useNavigate } from 'react-router'
+import { useState, useEffect, useRef } from "react";
+import { useParams, Link, useNavigate } from "react-router";
 import {
   ArrowRightLeft,
   Play,
@@ -22,79 +22,110 @@ import {
   Trash2,
   Loader2,
   AlertCircle,
-} from 'lucide-react'
+} from "lucide-react";
 import {
   useGetMigrationByIdQuery,
   useDeleteMigrationMutation,
-} from '../store/api/migrationsApi'
-import { useData } from '../context/DataContext'
-import { Breadcrumbs } from '../components/ui/Breadcrumbs'
-import { StatusBadge } from '../components/ui/StatusBadge'
-import { ConfirmDialog } from '../components/ui/ConfirmDialog'
-import { useToast } from '../context/ToastContext'
+} from "../store/api/migrationsApi";
+import { useData } from "../context/DataContext";
+import { Breadcrumbs } from "../components/ui/Breadcrumbs";
+import { StatusBadge } from "../components/ui/StatusBadge";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { useToast } from "../context/ToastContext";
 
 export default function MigrationDetail() {
-  const { migrationId } = useParams()
-  const navigate = useNavigate()
-  const { data: migration, isLoading, isError } = useGetMigrationByIdQuery(migrationId)
-  const [deleteMigration, { isLoading: isDeleting }] = useDeleteMigrationMutation()
-  const { startMigration, pauseMigration, resumeMigration, cancelMigration, logs } = useData()
-  const { showToast } = useToast()
+  const { migrationId } = useParams();
+  const navigate = useNavigate();
+  const {
+    data: migration,
+    isLoading,
+    isError,
+  } = useGetMigrationByIdQuery(migrationId);
+  const [deleteMigration, { isLoading: isDeleting }] =
+    useDeleteMigrationMutation();
+  const {
+    startMigration,
+    pauseMigration,
+    resumeMigration,
+    cancelMigration,
+    logs,
+  } = useData();
+  const { showToast } = useToast();
 
-  const [activeTab, setActiveTab] = useState('Overview')
-  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [logFilter, setLogFilter] = useState('ALL')
-  const [logSearch, setLogSearch] = useState('')
-  const [autoScroll, setAutoScroll] = useState(true)
+  const [activeTab, setActiveTab] = useState("Overview");
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [logFilter, setLogFilter] = useState("ALL");
+  const [logSearch, setLogSearch] = useState("");
+  const [autoScroll, setAutoScroll] = useState(true);
 
-  const logContainerRef = useRef(null)
+  const logContainerRef = useRef(null);
 
   // Auto-scroll logs
   useEffect(() => {
     if (autoScroll && logContainerRef.current) {
-      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
-  }, [logs, autoScroll])
+  }, [logs, autoScroll]);
 
-  const formatNumber = (n) => new Intl.NumberFormat('en-US').format(n || 0)
+  const formatNumber = (n) => new Intl.NumberFormat("en-US").format(n || 0);
 
   const filteredLogs = logs.filter((l) => {
-    const matchLevel = logFilter === 'ALL' || l.level === logFilter
-    const matchSearch = l.message.toLowerCase().includes(logSearch.toLowerCase()) || l.source.toLowerCase().includes(logSearch.toLowerCase())
-    return matchLevel && matchSearch
-  })
+    const matchLevel = logFilter === "ALL" || l.level === logFilter;
+    const matchSearch =
+      l.message.toLowerCase().includes(logSearch.toLowerCase()) ||
+      l.source.toLowerCase().includes(logSearch.toLowerCase());
+    return matchLevel && matchSearch;
+  });
 
   const handleConfirmDelete = async () => {
-    if (!migration) return
+    if (!migration) return;
     try {
-      await deleteMigration(migration.id).unwrap()
-      showToast('Migration Deleted', `Migration "${migration.name}" was deleted successfully.`, 'success')
-      setIsDeleteModalOpen(false)
-      navigate('/migrations')
+      await deleteMigration(migration.id).unwrap();
+      showToast(
+        "Migration Deleted",
+        `Migration "${migration.name}" was deleted successfully.`,
+        "success",
+      );
+      setIsDeleteModalOpen(false);
+      navigate("/migrations");
     } catch (err) {
-      showToast('Delete Failed', err?.data?.message || err?.message || 'Failed to delete migration', 'error')
+      showToast(
+        "Delete Failed",
+        err?.data?.message || err?.message || "Failed to delete migration",
+        "error",
+      );
     }
-  }
+  };
 
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-24">
         <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-        <p className="text-xs text-slate-500 mt-3 font-medium">Loading migration details...</p>
+        <p className="text-xs text-slate-500 mt-3 font-medium">
+          Loading migration details...
+        </p>
       </div>
-    )
+    );
   }
 
   if (isError || !migration) {
     return (
       <div className="space-y-6">
-        <Breadcrumbs items={[{ label: 'Migrations', to: '/migrations' }, { label: 'Not Found' }]} />
+        <Breadcrumbs
+          items={[
+            { label: "Migrations", to: "/migrations" },
+            { label: "Not Found" },
+          ]}
+        />
         <div className="flex flex-col items-center justify-center p-16 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
           <AlertCircle className="w-8 h-8 text-rose-500 mb-2" />
-          <p className="text-base font-bold text-slate-900 dark:text-white">Migration Not Found</p>
+          <p className="text-base font-bold text-slate-900 dark:text-white">
+            Migration Not Found
+          </p>
           <p className="text-xs text-slate-500 mt-1 max-w-sm">
-            The requested migration could not be found or you do not have permission to view it.
+            The requested migration could not be found or you do not have
+            permission to view it.
           </p>
           <Link
             to="/migrations"
@@ -104,41 +135,48 @@ export default function MigrationDetail() {
           </Link>
         </div>
       </div>
-    )
+    );
   }
 
   const copyLogs = () => {
-    const text = filteredLogs.map((l) => `[${l.time}] ${l.level} (${l.source}): ${l.message}`).join('\n')
-    navigator.clipboard?.writeText(text)
-    showToast('Logs Copied', 'All filtered logs copied to clipboard.', 'info')
-  }
+    const text = filteredLogs
+      .map((l) => `[${l.time}] ${l.level} (${l.source}): ${l.message}`)
+      .join("\n");
+    navigator.clipboard?.writeText(text);
+    showToast("Logs Copied", "All filtered logs copied to clipboard.", "info");
+  };
 
   const downloadLogs = () => {
-    const text = filteredLogs.map((l) => `[${l.time}] ${l.level} (${l.source}): ${l.message}`).join('\n')
-    const blob = new Blob([text], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${migration.id}-logs.txt`
-    a.click()
-    showToast('Download Started', 'Exporting log file...', 'info')
-  }
+    const text = filteredLogs
+      .map((l) => `[${l.time}] ${l.level} (${l.source}): ${l.message}`)
+      .join("\n");
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${migration.id}-logs.txt`;
+    a.click();
+    showToast("Download Started", "Exporting log file...", "info");
+  };
 
   const tabs = [
-    { name: 'Overview' },
-    { name: 'Progress' },
-    { name: 'Logs', badge: filteredLogs.length },
-    { name: 'Errors', badge: migration.recordsFailed > 0 ? migration.recordsFailed : null },
-    { name: 'Configuration' },
-    { name: 'Activity' },
-  ]
+    { name: "Overview" },
+    { name: "Progress" },
+    { name: "Logs", badge: filteredLogs.length },
+    {
+      name: "Errors",
+      badge: migration.recordsFailed > 0 ? migration.recordsFailed : null,
+    },
+    { name: "Configuration" },
+    { name: "Activity" },
+  ];
 
   return (
     <div className="space-y-6">
       {/* Breadcrumbs */}
       <Breadcrumbs
         items={[
-          { label: 'Migrations', to: '/migrations' },
+          { label: "Migrations", to: "/migrations" },
           { label: migration.name },
         ]}
       />
@@ -161,7 +199,7 @@ export default function MigrationDetail() {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2.5">
-          {migration?.status?.toUpperCase() === 'READY' && (
+          {migration?.status?.toUpperCase() === "READY" && (
             <button
               type="button"
               onClick={() => startMigration(migration.id)}
@@ -172,7 +210,7 @@ export default function MigrationDetail() {
             </button>
           )}
 
-          {migration?.status?.toUpperCase() === 'RUNNING' && (
+          {migration?.status?.toUpperCase() === "RUNNING" && (
             <>
               <button
                 type="button"
@@ -193,7 +231,7 @@ export default function MigrationDetail() {
             </>
           )}
 
-          {migration?.status?.toUpperCase() === 'PAUSED' && (
+          {migration?.status?.toUpperCase() === "PAUSED" && (
             <>
               <button
                 type="button"
@@ -214,7 +252,7 @@ export default function MigrationDetail() {
             </>
           )}
 
-          {migration?.status?.toUpperCase() === 'COMPLETED' && (
+          {migration?.status?.toUpperCase() === "COMPLETED" && (
             <span className="inline-flex items-center gap-1 text-xs font-mono text-emerald-600 dark:text-emerald-400 font-medium">
               <CheckCircle2 className="w-4 h-4" /> Finished Successfully
             </span>
@@ -244,7 +282,8 @@ export default function MigrationDetail() {
                 {(Number(migration?.progress) || 0).toFixed(1)}%
               </span>
               <span className="text-sm font-mono text-slate-500">
-                {formatNumber(migration?.recordsProcessed)} / {formatNumber(migration?.recordsTotal)} records
+                {formatNumber(migration?.recordsProcessed)} /{" "}
+                {formatNumber(migration?.recordsTotal)} records
               </span>
             </div>
           </div>
@@ -253,7 +292,9 @@ export default function MigrationDetail() {
             <span>·</span>
             <span>Elapsed: {migration?.elapsed}</span>
             <span>·</span>
-            <span className="text-indigo-600 dark:text-indigo-400 font-semibold">ETA: {migration?.eta}</span>
+            <span className="text-indigo-600 dark:text-indigo-400 font-semibold">
+              ETA: {migration?.eta}
+            </span>
           </div>
         </div>
 
@@ -261,15 +302,17 @@ export default function MigrationDetail() {
         <div className="w-full h-3 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-500 ${
-              migration?.status?.toUpperCase() === 'COMPLETED'
-                ? 'bg-teal-500'
-                : migration?.status?.toUpperCase() === 'PAUSED'
-                ? 'bg-amber-500'
-                : migration?.status?.toUpperCase() === 'FAILED'
-                ? 'bg-rose-500'
-                : 'bg-gradient-to-r from-indigo-500 via-emerald-500 to-teal-400'
+              migration?.status?.toUpperCase() === "COMPLETED"
+                ? "bg-teal-500"
+                : migration?.status?.toUpperCase() === "PAUSED"
+                  ? "bg-amber-500"
+                  : migration?.status?.toUpperCase() === "FAILED"
+                    ? "bg-rose-500"
+                    : "bg-gradient-to-r from-indigo-500 via-emerald-500 to-teal-400"
             }`}
-            style={{ width: `${Math.min(100, Number(migration?.progress) || 0)}%` }}
+            style={{
+              width: `${Math.min(100, Number(migration?.progress) || 0)}%`,
+            }}
           />
         </div>
 
@@ -296,7 +339,10 @@ export default function MigrationDetail() {
           <div>
             <span className="text-slate-400">Throughput</span>
             <p className="text-lg font-bold font-mono text-indigo-600 dark:text-indigo-400 mt-0.5">
-              {migration.throughput} <span className="text-xs font-normal text-slate-400">rec/sec</span>
+              {migration.throughput}{" "}
+              <span className="text-xs font-normal text-slate-400">
+                rec/sec
+              </span>
             </p>
           </div>
         </div>
@@ -305,7 +351,7 @@ export default function MigrationDetail() {
       {/* Tabs Header */}
       <div className="flex items-center gap-1 border-b border-slate-200/80 dark:border-slate-800/80 overflow-x-auto">
         {tabs.map((tab) => {
-          const isActive = activeTab === tab.name
+          const isActive = activeTab === tab.name;
           return (
             <button
               key={tab.name}
@@ -313,63 +359,80 @@ export default function MigrationDetail() {
               onClick={() => setActiveTab(tab.name)}
               className={`flex items-center gap-2 px-4 py-2.5 text-xs font-medium border-b-2 transition-all whitespace-nowrap ${
                 isActive
-                  ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+                  ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 font-semibold"
+                  : "border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
               }`}
             >
               <span>{tab.name}</span>
-              {typeof tab.badge === 'number' && (
+              {typeof tab.badge === "number" && (
                 <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                   {tab.badge}
                 </span>
               )}
             </button>
-          )
+          );
         })}
       </div>
 
       {/* Tab Panels */}
       <div className="pt-2">
         {/* OVERVIEW */}
-        {activeTab === 'Overview' && (
+        {activeTab === "Overview" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Batch &amp; Checkpoint Status</h3>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                Batch &amp; Checkpoint Status
+              </h3>
               <div className="space-y-2.5 text-xs font-mono">
                 <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                   <span className="text-slate-400">Current Checkpoint</span>
-                  <span className="text-slate-800 dark:text-slate-200">{migration.checkpoint}</span>
+                  <span className="text-slate-800 dark:text-slate-200">
+                    {migration.checkpoint}
+                  </span>
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                   <span className="text-slate-400">Batch Size</span>
-                  <span className="text-slate-800 dark:text-slate-200">{migration.batchSize} records/batch</span>
+                  <span className="text-slate-800 dark:text-slate-200">
+                    {migration.batchSize} records/batch
+                  </span>
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                   <span className="text-slate-400">Retry Count</span>
-                  <span className="text-slate-800 dark:text-slate-200">{migration.retries} retries</span>
+                  <span className="text-slate-800 dark:text-slate-200">
+                    {migration.retries} retries
+                  </span>
                 </div>
                 <div className="flex justify-between py-1.5">
                   <span className="text-slate-400">Resumable</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Yes (WAL offset backed)</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                    Yes (WAL offset backed)
+                  </span>
                 </div>
               </div>
             </div>
 
             <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Execution Agent Telemetry</h3>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                Execution Agent Telemetry
+              </h3>
               <div className="space-y-2.5 text-xs">
                 <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                   <span className="text-slate-400">Agent Node</span>
-                  <span className="font-mono text-slate-800 dark:text-slate-200">{migration.agentName}</span>
+                  <span className="font-mono text-slate-800 dark:text-slate-200">
+                    {migration.agentName}
+                  </span>
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                   <span className="text-slate-400">Heartbeat Interval</span>
-                  <span className="font-mono text-slate-800 dark:text-slate-200">5 seconds (OK)</span>
+                  <span className="font-mono text-slate-800 dark:text-slate-200">
+                    5 seconds (OK)
+                  </span>
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                   <span className="text-slate-400">Data Boundary</span>
                   <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5" /> Customer VPC Internal
+                    <ShieldCheck className="w-3.5 h-3.5" /> Customer VPC
+                    Internal
                   </span>
                 </div>
               </div>
@@ -378,26 +441,37 @@ export default function MigrationDetail() {
         )}
 
         {/* PROGRESS TAB */}
-        {activeTab === 'Progress' && (
+        {activeTab === "Progress" && (
           <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-6">
             <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Throughput Rate Over Time</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Records stream rate processed per second by local worker pool.</p>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                Throughput Rate Over Time
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Records stream rate processed per second by local worker pool.
+              </p>
             </div>
 
             {/* Simulated Rate Chart Graphic */}
             <div className="h-44 w-full flex items-end gap-2 pt-6 pb-2 px-4 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800">
-              {[420, 580, 640, 710, 680, 720, 696, 730, 690, 705, 696, 712, 696].map((rate, i) => {
-                const heightPct = Math.round((rate / 800) * 100)
+              {[
+                420, 580, 640, 710, 680, 720, 696, 730, 690, 705, 696, 712, 696,
+              ].map((rate, i) => {
+                const heightPct = Math.round((rate / 800) * 100);
                 return (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
+                  <div
+                    key={i}
+                    className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group"
+                  >
                     <div
                       className="w-full rounded-t-md bg-indigo-500/70 group-hover:bg-indigo-500 transition-all"
                       style={{ height: `${heightPct}%` }}
                     />
-                    <span className="text-[9px] font-mono text-slate-400">{i * 2}m</span>
+                    <span className="text-[9px] font-mono text-slate-400">
+                      {i * 2}m
+                    </span>
                   </div>
-                )
+                );
               })}
             </div>
             <p className="text-xs text-slate-500 font-mono text-center">
@@ -407,7 +481,7 @@ export default function MigrationDetail() {
         )}
 
         {/* LOGS TAB */}
-        {activeTab === 'Logs' && (
+        {activeTab === "Logs" && (
           <div className="rounded-2xl bg-slate-950 border border-slate-800 text-slate-200 p-4 space-y-3 font-mono text-xs shadow-xl">
             {/* Log Controls Bar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800 font-sans">
@@ -423,13 +497,15 @@ export default function MigrationDetail() {
                   />
                 </div>
                 <div className="flex items-center gap-1 text-[11px]">
-                  {['ALL', 'INFO', 'WARN', 'ERROR'].map((lvl) => (
+                  {["ALL", "INFO", "WARN", "ERROR"].map((lvl) => (
                     <button
                       key={lvl}
                       type="button"
                       onClick={() => setLogFilter(lvl)}
                       className={`px-2 py-0.5 rounded ${
-                        logFilter === lvl ? 'bg-indigo-600 text-white font-semibold' : 'text-slate-400 hover:text-white'
+                        logFilter === lvl
+                          ? "bg-indigo-600 text-white font-semibold"
+                          : "text-slate-400 hover:text-white"
                       }`}
                     >
                       {lvl}
@@ -473,20 +549,25 @@ export default function MigrationDetail() {
               className="h-80 overflow-y-auto space-y-1.5 pr-2 font-mono text-[11px] leading-relaxed select-text"
             >
               {filteredLogs.map((log) => (
-                <div key={log.id} className="flex items-start gap-3 hover:bg-slate-900/60 p-1 rounded">
+                <div
+                  key={log.id}
+                  className="flex items-start gap-3 hover:bg-slate-900/60 p-1 rounded"
+                >
                   <span className="text-slate-500 shrink-0">{log.time}</span>
                   <span
                     className={`font-semibold shrink-0 w-12 ${
-                      log.level === 'INFO'
-                        ? 'text-cyan-400'
-                        : log.level === 'WARN'
-                        ? 'text-amber-400'
-                        : 'text-rose-400'
+                      log.level === "INFO"
+                        ? "text-cyan-400"
+                        : log.level === "WARN"
+                          ? "text-amber-400"
+                          : "text-rose-400"
                     }`}
                   >
                     {log.level}
                   </span>
-                  <span className="text-slate-400 shrink-0">[{log.source}]</span>
+                  <span className="text-slate-400 shrink-0">
+                    [{log.source}]
+                  </span>
                   <span className="text-slate-200 flex-1">{log.message}</span>
                 </div>
               ))}
@@ -495,18 +576,27 @@ export default function MigrationDetail() {
         )}
 
         {/* ERRORS TAB */}
-        {activeTab === 'Errors' && (
+        {activeTab === "Errors" && (
           <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Validation &amp; Schema Issues</h3>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Validation &amp; Schema Issues
+                </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Records failing normalization rules quarantined to error dead-letter partition.
+                  Records failing normalization rules quarantined to error
+                  dead-letter partition.
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => showToast('Retried', 'Dead-letter partition re-queued.', 'success')}
+                onClick={() =>
+                  showToast(
+                    "Retried",
+                    "Dead-letter partition re-queued.",
+                    "success",
+                  )
+                }
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -522,7 +612,8 @@ export default function MigrationDetail() {
                     Phone number formatting exception (1,488 rows)
                   </p>
                   <p className="text-slate-500 dark:text-slate-400 mt-0.5">
-                    Field <code>phone</code> had non-conforming characters that failed <code>normalizePhone()</code>.
+                    Field <code>phone</code> had non-conforming characters that
+                    failed <code>normalizePhone()</code>.
                   </p>
                   <span className="text-[10px] font-mono text-slate-400 mt-1 block">
                     Partition: /var/data/quarantine/mig_customers_batch14.jsonl
@@ -534,27 +625,44 @@ export default function MigrationDetail() {
         )}
 
         {/* CONFIGURATION TAB */}
-        {activeTab === 'Configuration' && (
+        {activeTab === "Configuration" && (
           <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-6">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Safe Configuration Manifest</h3>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+              Safe Configuration Manifest
+            </h3>
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-500 font-mono">
-              <p>Credentials: Stored securely in customer AWS Secrets Manager (Vault ARN: arn:aws:secretsmanager:***)</p>
-              <p className="mt-1 text-slate-400">DataRelay control plane never receives or stores database passwords.</p>
+              <p>
+                Credentials: Stored securely in customer AWS Secrets Manager
+                (Vault ARN: arn:aws:secretsmanager:***)
+              </p>
+              <p className="mt-1 text-slate-400">
+                DataForge control plane never receives or stores database
+                passwords.
+              </p>
             </div>
           </div>
         )}
 
         {/* ACTIVITY TAB */}
-        {activeTab === 'Activity' && (
+        {activeTab === "Activity" && (
           <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Job Audit Trail</h3>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+              Job Audit Trail
+            </h3>
             <div className="space-y-3 text-xs">
               <div className="flex items-start gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1" />
                 <div>
-                  <p className="font-semibold text-slate-800 dark:text-slate-200">Execution Resumed</p>
-                  <p className="text-slate-500">Agent verified checkpoint chkpt_b294 and began streaming batches.</p>
-                  <span className="text-[10px] text-slate-400 font-mono">14 minutes ago by Abdul Moeez</span>
+                  <p className="font-semibold text-slate-800 dark:text-slate-200">
+                    Execution Resumed
+                  </p>
+                  <p className="text-slate-500">
+                    Agent verified checkpoint chkpt_b294 and began streaming
+                    batches.
+                  </p>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    14 minutes ago by Abdul Moeez
+                  </span>
                 </div>
               </div>
             </div>
@@ -570,8 +678,8 @@ export default function MigrationDetail() {
         confirmLabel="Cancel Migration"
         isDestructive={true}
         onConfirm={() => {
-          cancelMigration(migration.id)
-          setIsCancelModalOpen(false)
+          cancelMigration(migration.id);
+          setIsCancelModalOpen(false);
         }}
         onCancel={() => setIsCancelModalOpen(false)}
       />
@@ -587,5 +695,5 @@ export default function MigrationDetail() {
         onCancel={() => setIsDeleteModalOpen(false)}
       />
     </div>
-  )
+  );
 }

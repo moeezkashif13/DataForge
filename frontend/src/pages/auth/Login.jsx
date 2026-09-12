@@ -50,7 +50,7 @@ export default function Login() {
           Welcome back
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Sign in to your DataRelay workspace.
+          Sign in to your DataForge workspace.
         </p>
       </div>
 

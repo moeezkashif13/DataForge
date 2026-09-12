@@ -272,7 +272,7 @@ export function DataProvider({ children }) {
       cpuUsage: "3% (Dummy)",
       memUsage: "340 MB / 8 GB (Dummy)",
       networkEgress: "0.0 MB/s (Dummy)",
-      dockerImage: "datarelay/migration-agent:v1.4.2 (Dummy)",
+      dockerImage: "dataforge/migration-agent:v1.4.2 (Dummy)",
       registeredAt: new Date().toISOString(),
       ...agentData,
     };

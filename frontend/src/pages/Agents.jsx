@@ -126,12 +126,12 @@ export default function Agents() {
 
   const dockerSnippet = (token) =>
     `docker run -d \\
-  --name datarelay-agent \\
+  --name dataforge-agent \\
   --restart unless-stopped \\
   -e AGENT_ENROLLMENT_TOKEN="${token}" \\
-  -e CONTROL_PLANE_URL="wss://api.datarelay.io/agent/v1" \\
+  -e CONTROL_PLANE_URL="wss://api.dataforge.io/agent/v1" \\
   -v /var/run/docker.sock:/var/run/docker.sock \\
-  datarelay/migration-agent:latest`;
+  dataforge/migration-agent:latest`;
 
   return (
     <div className="space-y-6">

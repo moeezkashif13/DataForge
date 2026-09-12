@@ -255,7 +255,7 @@ export default function Dashboard() {
               <span>Control Plane + Customer Data Plane Philosophy</span>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              DataRelay orchestrates configuration, telemetry, and checkpointing
+              DataForge orchestrates configuration, telemetry, and checkpointing
               through secure outbound WebSockets. Your actual database
               credentials, rows, and payloads remain strictly quarantined inside
               your own infrastructure.

@@ -88,7 +88,10 @@ export class MigrationsService {
       checkpoint: 'chkpt_b294_offset_782000 (Dummy)',
       retries: 4,
       batchSize: 2000,
-      fieldMappingsCount: '6 (Dummy)',
+      fieldMappingsCount: Array.isArray(data.mappings)
+        ? `${data.mappings.length}`
+        : '0',
+      mappings: data.mappings || [],
       lastRun: '2 minutes ago (Dummy)',
       createdBy: data.createdBy,
       creator: data.creator
@@ -172,6 +175,7 @@ export class MigrationsService {
       target_schema: dto.target_schema || 'public',
       target_database: dto.target_database,
       target_table: dto.target_table,
+      mappings: dto.mappings,
       status: MigrationStatus.READY,
     };
 
