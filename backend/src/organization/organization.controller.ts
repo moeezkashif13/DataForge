@@ -3,10 +3,13 @@
 import {
   Body,
   Controller,
+  Get,
   HttpException,
   HttpStatus,
   Post,
+  Query,
   Res,
+  UnauthorizedException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { OrganizationService } from './organization.service';
@@ -101,16 +104,45 @@ export class OrganizationController {
     }
   }
 
+  @Get('members')
+  async getOrganizationMembers(
+    @CurrentUser() user: { id: string } | null,
+    @Query('organizationId') organizationId?: string,
+  ) {
+    if (!user?.id) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    try {
+      const data = await this.organizationService.getOrganizationMembers(
+        user.id,
+        organizationId,
+      );
+
+      return {
+        statusCode: HttpStatus.OK,
+        organizationId: data.organizationId,
+        members: data.members,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Internal server error',
+        error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
   @Post('invite')
   async inviteUser(
-    @Body() body: { organizationId: string; email: string },
+    @Body() body: { organizationId?: string; email: string },
     @CurrentUser() user: { id: string } | null,
   ) {
-    const { organizationId, email } = body;
+    const { email } = body;
+    let { organizationId } = body;
 
-    if (!organizationId || !email) {
+    if (!email) {
       throw new HttpException(
-        'organizationId and email are required',
+        'email is required',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -123,6 +155,17 @@ export class OrganizationController {
       );
     }
 
+    if (!organizationId) {
+      const userOrgs = await this.organizationService.getUserOrganizations(invitedBy);
+      if (!userOrgs || userOrgs.length === 0) {
+        throw new HttpException(
+          'Organization not found for user',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      organizationId = userOrgs[0].organizationId;
+    }
+
     try {
       const invitation = await this.organizationService.inviteUser({
         organizationId,
@@ -133,6 +176,7 @@ export class OrganizationController {
       return {
         statusCode: 201,
         message: 'Invitation created successfully',
+        invitation,
         token: invitation.token,
         expiresAt: invitation.expiresAt,
       };
@@ -140,6 +184,26 @@ export class OrganizationController {
       console.error('Error creating invitation:', error);
       throw new HttpException(
         error.message || 'Internal server error',
+        error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @AllowAnonymous()
+  @Get('invitation')
+  async getInvitation(@Query('token') token: string) {
+    if (!token) {
+      throw new HttpException('Token is required', HttpStatus.BAD_REQUEST);
+    }
+    try {
+      const invitation = await this.organizationService.getInvitationByToken(token);
+      return {
+        statusCode: HttpStatus.OK,
+        invitation,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Invalid or expired invitation',
         error.status || HttpStatus.BAD_REQUEST,
       );
     }

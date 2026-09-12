@@ -80,6 +80,14 @@ export const authApi = baseApi.injectEndpoints({
       },
     }),
 
+    getInvitation: builder.query({
+      query: (token) => `/organization/invitation?token=${encodeURIComponent(token)}`,
+      transformResponse: (response) => response?.invitation || null,
+      providesTags: (result, error, token) => [
+        { type: "Organization", id: `INVITATION_${token}` },
+      ],
+    }),
+
     acceptInvitation: builder.mutation({
       query: (payload) => ({
         url: "/organization/accept-invitation",
@@ -110,5 +118,7 @@ export const {
   useRegisterOrganizationMutation,
   useGetSessionQuery,
   useLogoutMutation,
+  useGetInvitationQuery,
   useAcceptInvitationMutation,
 } = authApi;
+

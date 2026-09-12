@@ -1,4 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/sequelize';
 import { Transaction } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
@@ -142,24 +147,193 @@ export class OrganizationService {
     }
   }
 
+  async getUserOrganizations(userId: string): Promise<OrganizationUser[]> {
+    return this.organizationUserModel.findAll({
+      where: { userId },
+      order: [['createdAt', 'ASC']],
+      include: [Organization],
+    });
+  }
+
+  async getUserPrimaryOrganization(
+    userId: string,
+  ): Promise<Organization | null> {
+    const userOrg = await this.organizationUserModel.findOne({
+      where: { userId },
+      order: [['createdAt', 'ASC']],
+      include: [Organization],
+    });
+    return userOrg?.organization || null;
+  }
+
+  async getOrganizationMembers(userId: string, requestedOrgId?: string) {
+    let targetOrgId = requestedOrgId;
+
+    if (targetOrgId) {
+      const membership = await this.organizationUserModel.findOne({
+        where: {
+          userId,
+          organizationId: targetOrgId,
+        },
+      });
+      if (!membership) {
+        throw new ForbiddenException(
+          'You do not have access to view members of this organization',
+        );
+      }
+    } else {
+      const userOrgs = await this.organizationUserModel.findAll({
+        where: { userId },
+        order: [['createdAt', 'ASC']],
+      });
+
+      if (!userOrgs.length) {
+        return { organizationId: null, members: [] };
+      }
+      targetOrgId = userOrgs[0].organizationId;
+    }
+
+    const orgUsers = await this.organizationUserModel.findAll({
+      where: { organizationId: targetOrgId },
+      include: [
+        {
+          model: User,
+          attributes: ['id', 'name', 'email', 'createdAt'],
+        },
+      ],
+      order: [['createdAt', 'ASC']],
+    });
+
+    const pendingInvitations = await this.organizationInvitationModel.findAll({
+      where: {
+        organizationId: targetOrgId,
+        status: 'pending',
+      },
+      order: [['createdAt', 'DESC']],
+    });
+
+    const activeMembers = orgUsers.map((ou) => {
+      const u = ou.user;
+      const name = u?.name || u?.email?.split('@')[0] || 'Team Member';
+      const initials =
+        name
+          .split(' ')
+          .filter(Boolean)
+          .map((n: string) => n[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2) || 'U';
+
+      const rawRole = (ou.role || 'operator').toLowerCase();
+      let role = 'Operator';
+      if (rawRole === 'admin') role = 'Admin';
+      else if (rawRole === 'owner') role = 'Owner';
+      else if (rawRole === 'viewer') role = 'Viewer';
+
+      return {
+        id: ou.id,
+        userId: ou.userId,
+        name,
+        email: u?.email || '',
+        role,
+        status: 'Active',
+        joined: new Date(ou.createdAt).toLocaleDateString('en-US', {
+          month: 'short',
+          year: 'numeric',
+        }),
+        avatar: initials,
+      };
+    });
+
+    const invitedMembers = pendingInvitations.map((inv) => {
+      const name = inv.email.split('@')[0];
+      const initials = name.slice(0, 2).toUpperCase() || 'IN';
+      return {
+        id: inv.id,
+        userId: null,
+        name: `${name} (Invited)`,
+        email: inv.email,
+        role: 'Operator',
+        status: 'Pending',
+        joined: new Date(inv.createdAt).toLocaleDateString('en-US', {
+          month: 'short',
+          year: 'numeric',
+        }),
+        avatar: initials,
+        token: inv.token,
+        expiresAt: inv.expiresAt,
+      };
+    });
+
+    return {
+      organizationId: targetOrgId,
+      members: [...activeMembers, ...invitedMembers],
+    };
+  }
+
   async inviteUser(input: {
     organizationId: string;
     invitedBy: string;
     email: string;
   }): Promise<OrganizationInvitation> {
+    const normalizedEmail = input.email.trim().toLowerCase();
+
+    const existingInvitation = await this.organizationInvitationModel.findOne({
+      where: {
+        organizationId: input.organizationId,
+        email: normalizedEmail,
+        status: 'pending',
+      },
+    });
+
+    if (existingInvitation) {
+      return existingInvitation;
+    }
+
     const token = this.generateInviteToken();
     const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
 
-    const invitation = this.organizationInvitationModel.create({
+    const invitation = await this.organizationInvitationModel.create({
       organizationId: input.organizationId,
       invitedBy: input.invitedBy,
-      email: input.email,
+      email: normalizedEmail,
       token,
       status: 'pending',
       expiresAt,
     } as any);
 
     return invitation;
+  }
+
+  async getInvitationByToken(token: string) {
+    const invitation = await this.organizationInvitationModel.findOne({
+      where: { token },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invalid or nonexistent invitation token');
+    }
+
+    if (invitation.status !== 'pending') {
+      throw new BadRequestException(`Invitation is already ${invitation.status}`);
+    }
+
+    if (invitation.expiresAt && invitation.expiresAt.getTime() < Date.now()) {
+      throw new BadRequestException('Invitation has expired');
+    }
+
+    const organization = await this.organizationModel.findByPk(
+      invitation.organizationId,
+    );
+
+    return {
+      id: invitation.id,
+      email: invitation.email,
+      organizationId: invitation.organizationId,
+      organizationName: organization?.name || 'Organization',
+      status: invitation.status,
+      expiresAt: invitation.expiresAt,
+    };
   }
 
   async acceptInvitation(input: {

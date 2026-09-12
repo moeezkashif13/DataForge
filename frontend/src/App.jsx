@@ -11,6 +11,7 @@ import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
+import AcceptInvitation from "./pages/auth/AcceptInvitation";
 
 // App Pages
 import Dashboard from "./pages/Dashboard";
@@ -48,6 +49,7 @@ export default function App() {
               <Route path="register" element={<Register />} />
               <Route path="forgot-password" element={<ForgotPassword />} />
               <Route path="reset-password" element={<ResetPassword />} />
+              <Route path="accept-invitation" element={<AcceptInvitation />} />
               <Route index element={<Navigate to="/auth/login" replace />} />
             </Route>
 
@@ -57,6 +59,8 @@ export default function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/accept-invitation" element={<AcceptInvitation />} />
+              <Route path="/invite" element={<AcceptInvitation />} />
             </Route>
 
             {/* Authenticated Application Control Plane */}
