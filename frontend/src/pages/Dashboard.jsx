@@ -214,7 +214,7 @@ export default function Dashboard() {
                   <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
-                        m.status === "PAUSED"
+                        String(m.status || "").toUpperCase() === "PAUSED"
                           ? "bg-amber-500"
                           : "bg-emerald-500"
                       }`}

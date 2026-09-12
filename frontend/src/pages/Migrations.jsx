@@ -29,7 +29,10 @@ export default function Migrations() {
   const [selectedMigForDelete, setSelectedMigForDelete] = useState(null);
 
   const filteredMigrations = migrations.filter((m) => {
-    const matchStatus = statusFilter === "ALL" || m.status === statusFilter;
+    const matchStatus =
+      statusFilter === "ALL" ||
+      m.status === statusFilter ||
+      String(m.status || "").toUpperCase() === statusFilter.toUpperCase();
     const matchSearch =
       (m.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (m.projectName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -48,35 +51,35 @@ export default function Migrations() {
       await deleteMigration(selectedMigForDelete.id).unwrap();
       showToast(
         "Migration Deleted",
-        `Migration "${selectedMigForDelete.name}" was deleted successfully.`,
+        "The migration pipeline has been removed.",
         "success"
       );
-      setSelectedMigForDelete(null);
     } catch (err) {
       showToast(
-        "Delete Failed",
+        "Error",
         err?.data?.message || err?.message || "Failed to delete migration",
         "error"
       );
+    } finally {
+      setSelectedMigForDelete(null);
     }
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
             Migrations
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Create, monitor, and manage your data movement jobs across customer
-            infrastructure.
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Active schema transformations and ongoing data pipelines
           </p>
         </div>
         <Link
           to="/migrations/new"
-          className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20 transition-all active:scale-95"
+          className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs active:scale-95 transition-all w-fit"
         >
           <Plus className="w-4 h-4" />
           <span>Create migration</span>
@@ -86,7 +89,7 @@ export default function Migrations() {
       {/* Filter and Search Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-2">
         <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs overflow-x-auto">
-          {["ALL", "RUNNING", "COMPLETED", "PAUSED", "FAILED", "QUEUED"].map(
+          {["ALL", "READY", "RUNNING", "COMPLETED", "PAUSED", "FAILED", "QUEUED"].map(
             (st) => (
               <button
                 key={st}
@@ -221,11 +224,11 @@ export default function Migrations() {
                         <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all ${
-                              m.status === "COMPLETED"
+                              String(m.status || "").toUpperCase() === "COMPLETED"
                                 ? "bg-teal-500"
-                                : m.status === "PAUSED"
+                                : String(m.status || "").toUpperCase() === "PAUSED"
                                   ? "bg-amber-500"
-                                  : m.status === "FAILED"
+                                  : String(m.status || "").toUpperCase() === "FAILED"
                                     ? "bg-rose-500"
                                     : "bg-emerald-500"
                             }`}

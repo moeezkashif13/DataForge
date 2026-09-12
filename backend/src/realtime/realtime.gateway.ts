@@ -243,7 +243,7 @@ export class RealtimeGateway
 
       const pendingMigrations = await this.migrationModel.findAll({
         where: {
-          status: MigrationStatus.ACTIVE,
+          status: MigrationStatus.READY,
         },
         include: [
           {

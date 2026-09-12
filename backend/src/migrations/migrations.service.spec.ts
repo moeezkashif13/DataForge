@@ -93,7 +93,7 @@ describe('MigrationsService', () => {
       projectId: 'proj-123',
       name: 'User Database Migration',
       description: 'Migrating legacy db to new Postgres schema',
-      status: MigrationStatus.ACTIVE,
+      status: MigrationStatus.READY,
     };
 
     it('should successfully create a migration if user is an assigned project member', async () => {
@@ -120,7 +120,7 @@ describe('MigrationsService', () => {
         createdBy: 'user-123',
         name: 'User Database Migration',
         description: 'Migrating legacy db to new Postgres schema',
-        status: MigrationStatus.ACTIVE,
+        status: MigrationStatus.READY,
       });
       expect(result.id).toBe('mig-001');
     });

@@ -161,7 +161,7 @@ export default function MigrationDetail() {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2.5">
-          {migration.status === 'READY' && (
+          {migration?.status?.toUpperCase() === 'READY' && (
             <button
               type="button"
               onClick={() => startMigration(migration.id)}
@@ -172,7 +172,7 @@ export default function MigrationDetail() {
             </button>
           )}
 
-          {migration.status === 'RUNNING' && (
+          {migration?.status?.toUpperCase() === 'RUNNING' && (
             <>
               <button
                 type="button"
@@ -193,7 +193,7 @@ export default function MigrationDetail() {
             </>
           )}
 
-          {migration.status === 'PAUSED' && (
+          {migration?.status?.toUpperCase() === 'PAUSED' && (
             <>
               <button
                 type="button"
@@ -214,7 +214,7 @@ export default function MigrationDetail() {
             </>
           )}
 
-          {migration.status === 'COMPLETED' && (
+          {migration?.status?.toUpperCase() === 'COMPLETED' && (
             <span className="inline-flex items-center gap-1 text-xs font-mono text-emerald-600 dark:text-emerald-400 font-medium">
               <CheckCircle2 className="w-4 h-4" /> Finished Successfully
             </span>
@@ -261,11 +261,11 @@ export default function MigrationDetail() {
         <div className="w-full h-3 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-500 ${
-              migration?.status === 'COMPLETED'
+              migration?.status?.toUpperCase() === 'COMPLETED'
                 ? 'bg-teal-500'
-                : migration?.status === 'PAUSED'
+                : migration?.status?.toUpperCase() === 'PAUSED'
                 ? 'bg-amber-500'
-                : migration?.status === 'FAILED'
+                : migration?.status?.toUpperCase() === 'FAILED'
                 ? 'bg-rose-500'
                 : 'bg-gradient-to-r from-indigo-500 via-emerald-500 to-teal-400'
             }`}

@@ -145,12 +145,84 @@ export default function CreateMigration() {
       return;
     }
 
+    if (!name?.trim()) {
+      showToast(
+        "Missing Migration Name",
+        "Please enter a name for the migration.",
+        "error",
+      );
+      return;
+    }
+
+    const normalizedSourceType = (sourceType || "postgresql").toLowerCase();
+    const normalizedTargetType = (targetType || "postgresql").toLowerCase();
+    const isDbSource =
+      normalizedSourceType === "mysql" || normalizedSourceType === "postgresql";
+
+    // Validate source fields
+    if (isDbSource) {
+      if (!sourceDatabase?.trim()) {
+        showToast(
+          "Missing Source Database",
+          "Please enter a source database name in Step 2.",
+          "error",
+        );
+        return;
+      }
+      if (!sourceTable?.trim()) {
+        showToast(
+          "Missing Source Table",
+          "Please enter a source table name in Step 2.",
+          "error",
+        );
+        return;
+      }
+    } else {
+      if (!sourceCsvPath?.trim()) {
+        showToast(
+          "Missing Source File Path",
+          "Please enter a host file path in Step 2.",
+          "error",
+        );
+        return;
+      }
+    }
+
+    // Validate target fields
+    if (!targetDatabase?.trim()) {
+      showToast(
+        "Missing Target Database",
+        "Please enter a target database name in Step 3.",
+        "error",
+      );
+      return;
+    }
+    if (!targetTable?.trim()) {
+      showToast(
+        "Missing Target Table",
+        "Please enter a target table name in Step 3.",
+        "error",
+      );
+      return;
+    }
+
+    const payload = {
+      projectId: proj.id,
+      name: name.trim(),
+      description: description?.trim() || null,
+      source_type: normalizedSourceType,
+      source_schema: sourceSchema?.trim() || "public",
+      source_database: isDbSource ? sourceDatabase.trim() : null,
+      source_table: isDbSource ? sourceTable.trim() : null,
+      source_file_path: !isDbSource ? sourceCsvPath.trim() : null,
+      target_type: normalizedTargetType,
+      target_schema: targetSchema?.trim() || "public",
+      target_database: targetDatabase.trim(),
+      target_table: targetTable.trim(),
+    };
+
     try {
-      const res = await createMigration({
-        projectId: proj.id,
-        name: name?.trim() || "Customer Data Migration",
-        description: description?.trim() || null,
-      }).unwrap();
+      const res = await createMigration(payload).unwrap();
 
       const createdMig = res?.data || res;
       showToast(
@@ -332,7 +404,7 @@ export default function CreateMigration() {
             {sourceType === "PostgreSQL" || sourceType === "MySQL" ? (
               <div className="space-y-4 pt-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
+                  {/* <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Connection Profile
                     </label>
@@ -347,7 +419,7 @@ export default function CreateMigration() {
                         </option>
                       ))}
                     </select>
-                  </div>
+                  </div> */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Database
@@ -359,9 +431,6 @@ export default function CreateMigration() {
                       className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono"
                     />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Schema
@@ -373,6 +442,9 @@ export default function CreateMigration() {
                       className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono"
                     />
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Table
@@ -406,25 +478,6 @@ export default function CreateMigration() {
                 </div>
               </div>
             )}
-
-            {/* Test Connection Button */}
-            <div className="pt-2 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={testSource}
-                className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-200 transition-colors"
-              >
-                {sourceTestStatus === "testing"
-                  ? "Testing probe..."
-                  : "Test Connection"}
-              </button>
-              {sourceTestStatus === "success" && (
-                <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-mono font-medium">
-                  <CheckCircle2 className="w-4 h-4" /> Connection successful
-                  (1.4ms)
-                </span>
-              )}
-            </div>
           </div>
         )}
 
@@ -460,7 +513,7 @@ export default function CreateMigration() {
 
             <div className="space-y-4 pt-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
+                {/* <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Target Connection
                   </label>
@@ -475,7 +528,7 @@ export default function CreateMigration() {
                       </option>
                     ))}
                   </select>
-                </div>
+                </div> */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Target Database
@@ -487,9 +540,6 @@ export default function CreateMigration() {
                     className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Target Schema
@@ -501,6 +551,9 @@ export default function CreateMigration() {
                     className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Target Table
@@ -754,7 +807,9 @@ export default function CreateMigration() {
                   {name}
                 </p>
                 <p className="font-mono text-slate-500">
-                  {sourceType} ({sourceDatabase}.{sourceTable})
+                  {sourceType === "CSV" || sourceType === "JSON" || sourceType === "S3"
+                    ? `${sourceType} (${sourceCsvPath})`
+                    : `${sourceType} (${sourceDatabase}.${sourceTable})`}
                 </p>
                 <p className="font-mono text-indigo-600 dark:text-indigo-400">
                   ↓ maps to

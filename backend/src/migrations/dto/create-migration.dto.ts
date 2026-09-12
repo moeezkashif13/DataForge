@@ -5,7 +5,12 @@ import {
   IsString,
   IsUUID,
 } from 'class-validator';
-import { MigrationStatus } from '../../../models/migration.model';
+import { Transform } from 'class-transformer';
+import {
+  MigrationStatus,
+  MigrationSourceType,
+  MigrationTargetType,
+} from '../../../models/migration.model';
 
 export class CreateMigrationDto {
   @IsUUID()
@@ -20,9 +25,57 @@ export class CreateMigrationDto {
   @IsOptional()
   description?: string;
 
-  // @IsEnum(MigrationStatus, {
-  //   message: `status must be one of the following values: ${Object.values(MigrationStatus).join(', ')}`,
-  // })
-  // @IsOptional()
-  // status?: MigrationStatus;
+  @IsEnum(MigrationStatus)
+  @IsOptional()
+  status?: MigrationStatus;
+
+  // Source Fields
+  @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.toLowerCase() : value,
+  )
+  @IsEnum(MigrationSourceType, {
+    message: `source_type must be one of: ${Object.values(MigrationSourceType).join(', ')}`,
+  })
+  source_type?: MigrationSourceType;
+
+  @IsString()
+  @IsOptional()
+  source_schema?: string;
+
+  @IsString()
+  @IsOptional()
+  source_database?: string | null;
+
+  @IsString()
+  @IsOptional()
+  source_table?: string | null;
+
+  @IsString()
+  @IsOptional()
+  source_file_path?: string | null;
+
+  // Target Fields
+  @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.toLowerCase() : value,
+  )
+  @IsEnum(MigrationTargetType, {
+    message: `target_type must be one of: ${Object.values(MigrationTargetType).join(', ')}`,
+  })
+  target_type?: MigrationTargetType;
+
+  @IsString()
+  @IsOptional()
+  target_schema?: string;
+
+  @IsString()
+  @IsOptional()
+  target_database?: string;
+
+  @IsString()
+  @IsOptional()
+  target_table?: string;
 }
+
+

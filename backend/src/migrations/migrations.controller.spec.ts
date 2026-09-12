@@ -36,7 +36,7 @@ describe('MigrationsController', () => {
       const dto = {
         projectId: 'proj-123',
         name: 'Migration A',
-        status: MigrationStatus.ACTIVE,
+        status: MigrationStatus.READY,
       };
       const user = { id: 'user-123' };
       const createdMigration = { id: 'mig-1', ...dto, createdBy: user.id };

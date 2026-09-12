@@ -25,7 +25,7 @@ describe('RealtimeModule', () => {
         {
           id: 'mig-001',
           name: 'Users Table Migration',
-          status: MigrationStatus.ACTIVE,
+          status: MigrationStatus.READY,
           projectId: 'proj-001',
           project: { name: 'Core DB Project' },
           createdAt: new Date(),
@@ -106,7 +106,7 @@ describe('RealtimeModule', () => {
       );
       expect(mockMigrationModel.findAll).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { status: MigrationStatus.ACTIVE },
+          where: { status: MigrationStatus.READY },
         }),
       );
       expect(mockSocket.emit).toHaveBeenCalledWith(

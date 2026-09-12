@@ -40,40 +40,42 @@ export class MigrationsService {
       ? migration.get({ plain: true })
       : (migration as any);
 
-    let uiStatus = 'RUNNING';
-    if (data.status === MigrationStatus.PAUSED || data.status === 'paused') {
-      uiStatus = 'PAUSED';
-    } else if (
-      data.status === MigrationStatus.ACTIVE ||
-      data.status === 'active'
-    ) {
-      uiStatus = 'RUNNING';
-    } else if (data.status) {
-      uiStatus = String(data.status).toUpperCase();
-    }
     const sourceLabel =
-      data.source_table ||
-      data.source_database ||
-      data.source_file_path ||
-      'production.customers (Dummy)';
-    const targetLabel = 'analytics.customers_v2 (Dummy)';
+      data.source_database && data.source_table
+        ? `${data.source_database}.${data.source_table}`
+        : data.source_file_path ||
+          data.source_table ||
+          data.source_database ||
+          'production.customers';
+
+    const targetLabel =
+      data.target_database && data.target_table
+        ? `${data.target_database}.${data.target_table}`
+        : data.target_table || data.target_database || 'analytics.customers_v2';
 
     return {
       id: data.id,
       name: data.name,
-      description:
-        data.description ||
-        'Production customer records sync with field sanitization (Dummy)',
+      description: data.description || '',
       projectId: data.projectId,
-      projectName: data.project?.name || 'Customer Platform (Dummy)',
+      projectName: data.project?.name || 'Customer Platform',
       sourceTargetLabel: `${sourceLabel} → ${targetLabel}`,
       sourceConnId: 'conn-pg-prod (Dummy)',
-      sourceType: 'PostgreSQL (Dummy)',
+      sourceType: data.source_type,
+      source_type: data.source_type,
+      source_schema: data.source_schema || 'public',
+      source_database: data.source_database,
+      source_table: data.source_table,
+      source_file_path: data.source_file_path,
       targetConnId: 'conn-pg-analytics (Dummy)',
-      targetType: 'PostgreSQL (Dummy)',
+      targetType: data.target_type,
+      target_type: data.target_type,
+      target_schema: data.target_schema || 'public',
+      target_database: data.target_database,
+      target_table: data.target_table,
       agentId: 'agent-prod-01 (Dummy)',
       agentName: 'Production Agent US-East (Dummy)',
-      status: uiStatus,
+      status: data.status,
       progress: 78.2,
       recordsProcessed: 782400,
       recordsTotal: 1000000,
@@ -156,13 +158,24 @@ export class MigrationsService {
     }
 
     // 4. Create Migration using the validated DTO properties
-    const created = await this.migrationModel.create({
+    const createPayload: any = {
       projectId,
       createdBy: creatorUserId,
       name,
       description: description ?? null,
-      status: MigrationStatus.ACTIVE,
-    } as any);
+      source_type: dto.source_type,
+      source_schema: dto.source_schema || 'public',
+      source_database: dto.source_database ?? null,
+      source_table: dto.source_table ?? null,
+      source_file_path: dto.source_file_path ?? null,
+      target_type: dto.target_type,
+      target_schema: dto.target_schema || 'public',
+      target_database: dto.target_database,
+      target_table: dto.target_table,
+      status: MigrationStatus.READY,
+    };
+
+    const created = await this.migrationModel.create(createPayload);
 
     const reloaded = await this.migrationModel.findByPk(created.id, {
       include: [

@@ -197,7 +197,7 @@ export default function Team() {
                       }`}
                     >
                       <span
-                        className={`w-1.5 h-1.5 rounded-full ${
+                        className={`min-w-[6px] h-1.5 rounded-full ${
                           member.status === "Active"
                             ? "bg-emerald-500"
                             : "bg-amber-500"

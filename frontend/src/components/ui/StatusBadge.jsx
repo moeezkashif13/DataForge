@@ -90,7 +90,9 @@ export function StatusBadge({ status, size = "sm" }) {
     <span
       className={`inline-flex items-center gap-1.5 font-medium rounded-full border tracking-wide uppercase font-mono ${sizeClasses} ${current.bg}`}
     >
-      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${current.dot}`} />
+      <span
+        className={`min-w-[6px] h-1.5 rounded-full shrink-0 ${current.dot}`}
+      />
       {current.label}
     </span>
   );
