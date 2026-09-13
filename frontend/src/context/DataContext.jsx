@@ -1,15 +1,8 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
   selectIsAuthenticated,
   selectOrganizationId,
-  setCredentials,
 } from "../store/slices/authSlice";
 import {
   useGetProjectsQuery,
@@ -24,9 +17,7 @@ import {
 import {
   initialWorkspaces,
   initialProjects,
-  initialAgents,
   initialConnections,
-  initialMigrations,
   initialActivities,
   initialLogs,
   initialTeam,
@@ -112,12 +103,6 @@ export function DataProvider({ children }) {
     skip: !isAuthenticated,
   });
   const [createProjectMutation] = useCreateProjectMutation();
-
-  // useEffect(() => {
-  //   if (apiProjects?.organizationId && !organizationId) {
-  //     dispatch(setCredentials({ organizationId: apiProjects.organizationId }));
-  //   }
-  // }, [apiProjects, organizationId, dispatch]);
 
   const [localProjects, setLocalProjects] = useState([]);
   const projects =
@@ -212,7 +197,7 @@ export function DataProvider({ children }) {
       ? apiAgents
       : localAgents.length
         ? localAgents
-        : initialAgents;
+        : [];
 
   const registerAgent = async (agentData) => {
     const activeOrgId =
@@ -226,6 +211,7 @@ export function DataProvider({ children }) {
     if (isAuthenticated) {
       try {
         const payload = {
+          projectId: agentData.projectId,
           organizationId: activeOrgId,
           name: agentData.name,
           description:
@@ -423,53 +409,6 @@ export function DataProvider({ children }) {
       "success",
     );
   };
-
-  // Real-time progress simulator (simulates active stream in control plane)
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     setMigrationOverrides((prev) => {
-  //       const next = { ...prev };
-  //       let hasChanges = false;
-  //       for (const m of baseMigrations) {
-  //         const current = next[m.id] ? { ...m, ...next[m.id] } : m;
-  //         if (
-  //           current.status === "RUNNING" &&
-  //           typeof current.recordsProcessed === "number" &&
-  //           typeof current.recordsTotal === "number" &&
-  //           current.recordsProcessed < current.recordsTotal
-  //         ) {
-  //           const increment = Math.floor(Math.random() * 250) + 150;
-  //           const newProcessed = Math.min(
-  //             current.recordsTotal,
-  //             current.recordsProcessed + increment,
-  //           );
-  //           const failedIncrement =
-  //             Math.random() > 0.85 ? Math.floor(Math.random() * 3) : 0;
-  //           const newSucceeded =
-  //             (current.recordsSucceeded || 0) + (increment - failedIncrement);
-  //           const newFailed = (current.recordsFailed || 0) + failedIncrement;
-  //           const newProgress = Number(
-  //             ((newProcessed / current.recordsTotal) * 100).toFixed(1),
-  //           );
-
-  //           next[m.id] = {
-  //             ...(next[m.id] || {}),
-  //             recordsProcessed: newProcessed,
-  //             recordsSucceeded: newSucceeded,
-  //             recordsFailed: newFailed,
-  //             progress: newProgress,
-  //             status:
-  //               newProcessed >= current.recordsTotal ? "COMPLETED" : "RUNNING",
-  //           };
-  //           hasChanges = true;
-  //         }
-  //       }
-  //       return hasChanges ? next : prev;
-  //     });
-  //   }, 3500);
-
-  //   return () => clearInterval(interval);
-  // }, [baseMigrations]);
 
   return (
     <DataContext.Provider

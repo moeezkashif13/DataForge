@@ -3,9 +3,16 @@ import { baseApi } from './baseApi'
 export const agentsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getAgents: builder.query({
-      query: (organizationId) => {
-        const params = organizationId ? `?organizationId=${organizationId}` : ''
-        return `/execution-agent${params}`
+      query: (arg) => {
+        const searchParams = new URLSearchParams()
+        if (typeof arg === 'string') {
+          if (arg) searchParams.append('organizationId', arg)
+        } else if (arg && typeof arg === 'object') {
+          if (arg.organizationId) searchParams.append('organizationId', arg.organizationId)
+          if (arg.projectId) searchParams.append('projectId', arg.projectId)
+        }
+        const qs = searchParams.toString()
+        return `/execution-agent${qs ? `?${qs}` : ''}`
       },
       transformResponse: (response) => {
         return response?.agents || []

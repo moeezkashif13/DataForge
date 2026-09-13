@@ -8,6 +8,8 @@ import { ConnectionToken } from '../../models/connection-token.model';
 import { Organization } from '../../models/organization.model';
 import { OrganizationUser } from '../../models/organization-user.model';
 import { User } from '../../models/user.model';
+import { Project } from '../../models/project.model';
+import { ProjectUser } from '../../models/project-user.model';
 import { PublicExecutionAgentController } from './public-execution-agent.controller';
 
 @Module({
@@ -18,6 +20,8 @@ import { PublicExecutionAgentController } from './public-execution-agent.control
       Organization,
       OrganizationUser,
       User,
+      Project,
+      ProjectUser,
     ]),
     JwtModule.register({
       secret: process.env.DEFAULT_JWT_SECRET,

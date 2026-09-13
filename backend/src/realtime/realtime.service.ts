@@ -57,6 +57,13 @@ export class RealtimeService {
   }
 
   /**
+   * Helper to emit an event to a specific project's room (`project:{projectId}`).
+   */
+  emitToProject(projectId: string, event: string, payload: any): void {
+    this.emitToRoom(`project:${projectId}`, event, payload);
+  }
+
+  /**
    * Check if a specific agent is currently connected
    */
   isAgentConnected(agentId: string): boolean {

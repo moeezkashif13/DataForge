@@ -9,6 +9,7 @@ import {
   Index,
 } from 'sequelize-typescript';
 import { Organization } from './organization.model';
+import { Project } from './project.model';
 import { User } from './user.model';
 import { ConnectionToken } from './connection-token.model';
 
@@ -25,8 +26,8 @@ export enum AgentStatus {
   indexes: [
     {
       unique: true,
-      fields: ['organizationId', 'name'],
-      name: 'agents_organization_id_name_unique',
+      fields: ['projectId', 'name'],
+      name: 'agents_project_id_name_unique',
     },
   ],
 })
@@ -46,6 +47,15 @@ export class Agent extends Model<Agent> {
     field: 'organization_id',
   })
   declare organizationId: string;
+
+  @ForeignKey(() => Project)
+  @Index
+  @Column({
+    type: DataType.UUID,
+    allowNull: true,
+    field: 'project_id',
+  })
+  declare projectId: string;
 
   @Column({
     type: DataType.STRING(255),
@@ -94,6 +104,12 @@ export class Agent extends Model<Agent> {
     onDelete: 'CASCADE',
   })
   declare organization: Organization;
+
+  @BelongsTo(() => Project, {
+    foreignKey: 'projectId',
+    onDelete: 'CASCADE',
+  })
+  declare project: Project;
 
   @BelongsTo(() => User, {
     foreignKey: 'createdBy',

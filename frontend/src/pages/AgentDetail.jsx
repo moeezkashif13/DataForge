@@ -14,50 +14,112 @@ import {
   Terminal,
   Trash2,
   Loader2,
+  FolderKanban,
 } from "lucide-react";
-import { useData } from "../context/DataContext";
 import { Breadcrumbs } from "../components/ui/Breadcrumbs";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
-import { useGetAgentByIdQuery } from "../store/api/agentsApi";
+import { useToast } from "../context/ToastContext";
+import {
+  useGetAgentByIdQuery,
+  useDeleteAgentMutation,
+} from "../store/api/agentsApi";
+import { useGetMigrationsQuery } from "../store/api/migrationsApi";
+import {
+  initialAgents,
+  initialMigrations,
+  initialActivities,
+} from "../types/mockData";
 
 export default function AgentDetail() {
   const { agentId } = useParams();
   const navigate = useNavigate();
-  const { agents, migrations, activities, deleteAgent } = useData();
-  const { data: apiAgent } = useGetAgentByIdQuery(agentId, { skip: !agentId });
+  const { showToast } = useToast();
+
+  const {
+    data: apiAgent,
+    isLoading: isAgentLoading,
+  } = useGetAgentByIdQuery(agentId, { skip: !agentId });
+
+  const { data: apiMigrations = [] } = useGetMigrationsQuery();
+  const [deleteAgentMutation] = useDeleteAgentMutation();
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const agent = apiAgent || agents.find((a) => a.id === agentId) || agents[0];
+  const agent =
+    apiAgent ||
+    initialAgents.find((a) => a.id === agentId) ||
+    null;
 
-  const agentMigrations = migrations.filter((m) => m.agentId === agent?.id);
-  const agentActivities = activities.filter(
+  const migrationsList =
+    apiMigrations.length > 0 ? apiMigrations : initialMigrations;
+  const agentMigrations = migrationsList.filter((m) => m.agentId === agent?.id);
+
+  const agentActivities = initialActivities.filter(
     (act) =>
-      act.detail.includes(agent?.name || "") || act.title.includes("Agent"),
+      act.detail?.includes(agent?.name || "") ||
+      act.title?.includes("Agent") ||
+      act.title?.includes("Migration"),
   );
 
   const handleDeleteAgent = async () => {
     if (!agent) return;
     setIsDeleting(true);
     try {
-      await deleteAgent(agent.id);
-      navigate('/agents');
+      if (!agent.id.startsWith("agent-")) {
+        await deleteAgentMutation(agent.id).unwrap();
+      }
+      showToast(
+        "Agent Deleted",
+        `Agent "${agent.name}" and all associated tokens have been removed.`,
+        "success",
+      );
+      navigate("/agents");
     } catch (err) {
-      console.error('Failed to delete agent:', err);
+      console.error("Failed to delete agent:", err);
+      showToast(
+        "Delete Failed",
+        err?.data?.message || err?.message || "Failed to delete agent",
+        "error",
+      );
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
     }
   };
 
-  if (!agent) {
+  if (isAgentLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-3">
-        <Server className="w-8 h-8 text-slate-400 animate-pulse" />
+        <Server className="w-8 h-8 text-indigo-500 animate-pulse" />
         <p className="text-sm font-medium text-slate-500">
           Loading agent details...
         </p>
+      </div>
+    );
+  }
+
+  if (!agent) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-4">
+        <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+          <Server className="w-6 h-6" />
+        </div>
+        <div>
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">
+            Agent Not Found
+          </h2>
+          <p className="text-xs text-slate-500 mt-1">
+            The execution agent with ID "{agentId}" could not be found or you do not have permission to view it.
+          </p>
+        </div>
+        <Link
+          to="/agents"
+          className="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
+        >
+          Back to Agents
+        </Link>
       </div>
     );
   }
@@ -84,6 +146,15 @@ export default function AgentDetail() {
                 {agent?.name}
               </h1>
               <StatusBadge status={agent?.status} size="md" />
+              {agent?.projectName && (
+                <Link
+                  to={agent.projectId ? `/projects/${agent.projectId}` : "#"}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 px-2.5 py-1 rounded-lg border border-indigo-100 dark:border-indigo-900/50 transition-colors"
+                >
+                  <FolderKanban className="w-3.5 h-3.5" />
+                  <span>Project: {agent.projectName}</span>
+                </Link>
+              )}
             </div>
           </div>
         </div>

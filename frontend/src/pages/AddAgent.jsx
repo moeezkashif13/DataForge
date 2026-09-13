@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import {
   Server,
@@ -7,8 +7,10 @@ import {
   Save,
   Loader2,
   ArrowLeft,
+  FolderKanban,
 } from "lucide-react";
 import { useData } from "../context/DataContext";
+import { useGetProjectsQuery } from "../store/api/projectsApi";
 import { Breadcrumbs } from "../components/ui/Breadcrumbs";
 import { useToast } from "../context/ToastContext";
 
@@ -16,14 +18,27 @@ export default function AddAgent() {
   const { registerAgent } = useData();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { data: apiProjects = [], isLoading: isProjectsLoading } = useGetProjectsQuery();
 
+  const [projectId, setProjectId] = useState("");
   const [agentName, setAgentName] = useState("");
   const [environment, setEnvironment] = useState("Production");
   const [description, setDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  useEffect(() => {
+    if (!projectId && apiProjects.length > 0) {
+      setProjectId(apiProjects[0].id);
+    }
+  }, [apiProjects, projectId]);
+
   const handleSave = async (e) => {
     e.preventDefault();
+
+    if (!projectId) {
+      showToast("Validation Error", "Please select an assigned project for this agent", "warning");
+      return;
+    }
 
     if (!agentName.trim()) {
       showToast("Validation Error", "Agent name is required", "warning");
@@ -33,6 +48,7 @@ export default function AddAgent() {
     setIsSaving(true);
     try {
       const newAgent = await registerAgent({
+        projectId,
         name: agentName.trim(),
         environment,
         description: description.trim() || "Customer-hosted migration agent",
@@ -115,6 +131,33 @@ export default function AddAgent() {
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Define the identification and network scope for this execution
                 runner.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                Assigned Project <span className="text-rose-500">*</span>
+              </label>
+              <select
+                required
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-indigo-500 transition-colors cursor-pointer"
+              >
+                {apiProjects.length === 0 ? (
+                  <option value="" disabled>No projects available (You must belong to a project)</option>
+                ) : (
+                  apiProjects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))
+                )}
+              </select>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                Only members assigned to this project can view, manage, and use this execution agent.
               </p>
             </div>
           </div>

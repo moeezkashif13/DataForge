@@ -3,10 +3,6 @@ import { baseApi } from "./baseApi";
 export const migrationsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getMigrations: builder.query({
-      // query: (projectId) => {
-      //   const params = projectId ? `?projectId=${projectId}` : "";
-      //   return `${import.meta.env.VITE_BACKEND_URL}/migrations${params}`;
-      // },
       query: (id) => `/migrations`,
 
       transformResponse: (response) => {

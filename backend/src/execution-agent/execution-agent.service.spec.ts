@@ -6,12 +6,15 @@ import {
   ForbiddenException,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { ExecutionAgentService } from './execution-agent.service';
 import { Agent, AgentStatus } from '../../models/agent.model';
 import { ConnectionToken } from '../../models/connection-token.model';
 import { Organization } from '../../models/organization.model';
 import { OrganizationUser } from '../../models/organization-user.model';
+import { Project } from '../../models/project.model';
+import { ProjectUser } from '../../models/project-user.model';
 import { CreateAgentDto } from './dto/create-agent.dto';
 
 describe('ExecutionAgentService', () => {
@@ -20,6 +23,8 @@ describe('ExecutionAgentService', () => {
   let mockConnectionTokenModel: any;
   let mockOrganizationModel: any;
   let mockOrganizationUserModel: any;
+  let mockProjectModel: any;
+  let mockProjectUserModel: any;
   let mockJwtService: any;
 
   beforeEach(async () => {
@@ -41,6 +46,16 @@ describe('ExecutionAgentService', () => {
 
     mockOrganizationUserModel = {
       findOne: jest.fn(),
+      findAll: jest.fn(),
+    };
+
+    mockProjectModel = {
+      findByPk: jest.fn(),
+    };
+
+    mockProjectUserModel = {
+      findOne: jest.fn(),
+      findAll: jest.fn(),
     };
 
     mockJwtService = {
@@ -67,6 +82,14 @@ describe('ExecutionAgentService', () => {
           useValue: mockOrganizationUserModel,
         },
         {
+          provide: getModelToken(Project),
+          useValue: mockProjectModel,
+        },
+        {
+          provide: getModelToken(ProjectUser),
+          useValue: mockProjectUserModel,
+        },
+        {
           provide: JwtService,
           useValue: mockJwtService,
         },
@@ -82,15 +105,18 @@ describe('ExecutionAgentService', () => {
 
   describe('createAgent', () => {
     const validDto: CreateAgentDto = {
-      organizationId: 'org-123',
+      projectId: 'proj-123',
       name: 'Primary Node Agent',
       description: 'On-prem runner agent',
     };
 
-    it('should successfully create an agent if user belongs to the organization', async () => {
-      mockOrganizationModel.findByPk.mockResolvedValue({ id: 'org-123' });
-      mockOrganizationUserModel.findOne.mockResolvedValue({
+    it('should successfully create an agent if user belongs to the project', async () => {
+      mockProjectModel.findByPk.mockResolvedValue({
+        id: 'proj-123',
         organizationId: 'org-123',
+      });
+      mockProjectUserModel.findOne.mockResolvedValue({
+        projectId: 'proj-123',
         userId: 'user-123',
       });
       mockAgentModel.findOne.mockResolvedValue(null);
@@ -100,12 +126,13 @@ describe('ExecutionAgentService', () => {
 
       const result = await service.createAgent(validDto, 'user-123');
 
-      expect(mockOrganizationModel.findByPk).toHaveBeenCalledWith('org-123');
-      expect(mockOrganizationUserModel.findOne).toHaveBeenCalledWith({
-        where: { organizationId: 'org-123', userId: 'user-123' },
+      expect(mockProjectModel.findByPk).toHaveBeenCalledWith('proj-123');
+      expect(mockProjectUserModel.findOne).toHaveBeenCalledWith({
+        where: { projectId: 'proj-123', userId: 'user-123' },
       });
       expect(mockAgentModel.create).toHaveBeenCalledWith({
         organizationId: 'org-123',
+        projectId: 'proj-123',
         createdBy: 'user-123',
         name: 'Primary Node Agent',
         description: 'On-prem runner agent',
@@ -114,19 +141,25 @@ describe('ExecutionAgentService', () => {
       expect(result.id).toBe('agent-001');
     });
 
-    it('should throw ForbiddenException if user is not in the organization', async () => {
-      mockOrganizationModel.findByPk.mockResolvedValue({ id: 'org-123' });
-      mockOrganizationUserModel.findOne.mockResolvedValue(null);
+    it('should throw ForbiddenException if user is not in the project', async () => {
+      mockProjectModel.findByPk.mockResolvedValue({
+        id: 'proj-123',
+        organizationId: 'org-123',
+      });
+      mockProjectUserModel.findOne.mockResolvedValue(null);
 
       await expect(
         service.createAgent(validDto, 'unauthorized-user'),
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('should throw ConflictException if agent name already exists in the organization', async () => {
-      mockOrganizationModel.findByPk.mockResolvedValue({ id: 'org-123' });
-      mockOrganizationUserModel.findOne.mockResolvedValue({
+    it('should throw ConflictException if agent name already exists in the project', async () => {
+      mockProjectModel.findByPk.mockResolvedValue({
+        id: 'proj-123',
         organizationId: 'org-123',
+      });
+      mockProjectUserModel.findOne.mockResolvedValue({
+        projectId: 'proj-123',
         userId: 'user-123',
       });
       mockAgentModel.findOne.mockResolvedValue({ id: 'existing-agent' });
@@ -136,8 +169,8 @@ describe('ExecutionAgentService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('should throw NotFoundException if organization does not exist', async () => {
-      mockOrganizationModel.findByPk.mockResolvedValue(null);
+    it('should throw NotFoundException if project does not exist', async () => {
+      mockProjectModel.findByPk.mockResolvedValue(null);
 
       await expect(
         service.createAgent(validDto, 'user-123'),
@@ -150,9 +183,10 @@ describe('ExecutionAgentService', () => {
       mockAgentModel.findByPk.mockResolvedValue({
         id: 'agent-123',
         organizationId: 'org-123',
+        projectId: 'proj-123',
       });
-      mockOrganizationUserModel.findOne.mockResolvedValue({
-        organizationId: 'org-123',
+      mockProjectUserModel.findOne.mockResolvedValue({
+        projectId: 'proj-123',
         userId: 'user-123',
       });
       mockConnectionTokenModel.create.mockImplementation((data: any) =>
@@ -177,12 +211,13 @@ describe('ExecutionAgentService', () => {
       );
     });
 
-    it('should throw ForbiddenException if user is not in agent organization', async () => {
+    it('should throw ForbiddenException if user is not in agent project', async () => {
       mockAgentModel.findByPk.mockResolvedValue({
         id: 'agent-123',
         organizationId: 'org-123',
+        projectId: 'proj-123',
       });
-      mockOrganizationUserModel.findOne.mockResolvedValue(null);
+      mockProjectUserModel.findOne.mockResolvedValue(null);
 
       await expect(
         service.generateConnectionToken('agent-123', {}, 'user-attacker'),
@@ -191,18 +226,20 @@ describe('ExecutionAgentService', () => {
   });
 
   describe('verifyConnectionToken', () => {
-    const rawToken = 'df_agent_abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890';
+    const rawToken =
+      'df_agent_abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890';
     const mockAgent = {
       id: 'agent-uuid-001',
       name: 'Worker Node 1',
       organizationId: 'org-uuid-001',
+      projectId: 'proj-uuid-001',
       status: AgentStatus.ACTIVE,
       lastHeartbeatAt: null,
       connected: false,
       save: jest.fn().mockResolvedValue(true),
     };
 
-    it('should successfully verify a valid connection token and return JWT with agent_id and organization_id', async () => {
+    it('should successfully verify a valid connection token and return JWT with agent_id, organization_id, and project_id', async () => {
       const mockTokenRecord = {
         id: 'token-rec-001',
         agentId: mockAgent.id,
@@ -228,6 +265,8 @@ describe('ExecutionAgentService', () => {
         {
           agent_id: 'agent-uuid-001',
           organization_id: 'org-uuid-001',
+          project_id: 'proj-uuid-001',
+          type: 'ea_token',
         },
         expect.objectContaining({
           secret: expect.any(String),
@@ -240,6 +279,7 @@ describe('ExecutionAgentService', () => {
       expect(result.accessToken).toBe('mocked.jwt.token');
       expect(result.agentId).toBe('agent-uuid-001');
       expect(result.organizationId).toBe('org-uuid-001');
+      expect(result.projectId).toBe('proj-uuid-001');
     });
 
     it('should throw UnauthorizedException when token is missing or empty', async () => {

@@ -20,8 +20,15 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 
 export default function Migrations() {
-  const { data: migrations = [], isLoading, isError, error, refetch } = useGetMigrationsQuery();
-  const [deleteMigration, { isLoading: isDeleting }] = useDeleteMigrationMutation();
+  const {
+    data: migrations = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useGetMigrationsQuery();
+  const [deleteMigration, { isLoading: isDeleting }] =
+    useDeleteMigrationMutation();
   const { showToast } = useToast();
 
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -52,13 +59,13 @@ export default function Migrations() {
       showToast(
         "Migration Deleted",
         "The migration pipeline has been removed.",
-        "success"
+        "success",
       );
     } catch (err) {
       showToast(
         "Error",
         err?.data?.message || err?.message || "Failed to delete migration",
-        "error"
+        "error",
       );
     } finally {
       setSelectedMigForDelete(null);
@@ -89,22 +96,28 @@ export default function Migrations() {
       {/* Filter and Search Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-2">
         <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs overflow-x-auto">
-          {["ALL", "READY", "RUNNING", "COMPLETED", "PAUSED", "FAILED", "QUEUED"].map(
-            (st) => (
-              <button
-                key={st}
-                type="button"
-                onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1 rounded-lg font-medium transition-all whitespace-nowrap ${
-                  statusFilter === st
-                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-semibold"
-                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                }`}
-              >
-                {st.charAt(0) + st.slice(1).toLowerCase()}
-              </button>
-            ),
-          )}
+          {[
+            "ALL",
+            "READY",
+            "RUNNING",
+            "COMPLETED",
+            "PAUSED",
+            "FAILED",
+            "QUEUED",
+          ].map((st) => (
+            <button
+              key={st}
+              type="button"
+              onClick={() => setStatusFilter(st)}
+              className={`px-3 py-1 rounded-lg font-medium transition-all whitespace-nowrap ${
+                statusFilter === st
+                  ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-semibold"
+                  : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+              }`}
+            >
+              {st.charAt(0) + st.slice(1).toLowerCase()}
+            </button>
+          ))}
         </div>
 
         <div className="relative w-full sm:w-72">
@@ -134,7 +147,9 @@ export default function Migrations() {
             Failed to load migrations
           </p>
           <p className="text-xs text-slate-500 mt-1 max-w-sm">
-            {error?.data?.message || error?.message || "An unexpected error occurred."}
+            {error?.data?.message ||
+              error?.message ||
+              "An unexpected error occurred."}
           </p>
           <button
             type="button"
@@ -163,7 +178,7 @@ export default function Migrations() {
                   <th className="py-3 px-4">Source → Target</th>
                   <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-4">Progress</th>
-                  <th className="py-3 px-4">Agent</th>
+                  {/* <th className="py-3 px-4">Agent</th> */}
                   <th className="py-3 px-4">Last Run</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
@@ -224,11 +239,14 @@ export default function Migrations() {
                         <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all ${
-                              String(m.status || "").toUpperCase() === "COMPLETED"
+                              String(m.status || "").toUpperCase() ===
+                              "COMPLETED"
                                 ? "bg-teal-500"
-                                : String(m.status || "").toUpperCase() === "PAUSED"
+                                : String(m.status || "").toUpperCase() ===
+                                    "PAUSED"
                                   ? "bg-amber-500"
-                                  : String(m.status || "").toUpperCase() === "FAILED"
+                                  : String(m.status || "").toUpperCase() ===
+                                      "FAILED"
                                     ? "bg-rose-500"
                                     : "bg-emerald-500"
                             }`}
@@ -241,12 +259,12 @@ export default function Migrations() {
                     </td>
 
                     {/* Agent */}
-                    <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                    {/* <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600 dark:text-slate-400">
                       <div className="flex items-center gap-1.5">
                         <Server className="w-3.5 h-3.5 text-slate-400" />
                         <span>{m.agentName}</span>
                       </div>
-                    </td>
+                    </td> */}
 
                     {/* Last run */}
                     <td className="py-3.5 px-4 text-slate-500 text-[11px]">

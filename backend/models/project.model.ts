@@ -12,6 +12,7 @@ import {
 import { Organization } from './organization.model';
 import { ProjectUser } from './project-user.model';
 import { Migration } from './migration.model';
+import { Agent } from './agent.model';
 
 @Table({
   tableName: 'projects',
@@ -69,4 +70,7 @@ export class Project extends Model<Project> {
 
   @HasMany(() => Migration)
   declare migrations: Migration[];
+
+  @HasMany(() => Agent)
+  declare agents: Agent[];
 }

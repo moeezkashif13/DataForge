@@ -16,8 +16,6 @@ export const projectsApi = baseApi.injectEndpoints({
       async onQueryStarted(arg, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
-          console.log(data);
-          console.log(data[0].organizationId);
 
           dispatch(
             setCredentials({
@@ -95,4 +93,3 @@ export const {
   useAddProjectMemberMutation,
   useRemoveProjectMemberMutation,
 } = projectsApi;
-

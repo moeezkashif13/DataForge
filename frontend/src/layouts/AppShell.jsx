@@ -244,6 +244,7 @@ export default function AppShell() {
               <Folder className="w-4 h-4 shrink-0" />
               <span>Projects</span>
             </NavLink>
+
             <NavLink to="/migrations" className={navItemClass}>
               <ArrowRightLeft className="w-4 h-4 shrink-0" />
               <span>Migrations</span>

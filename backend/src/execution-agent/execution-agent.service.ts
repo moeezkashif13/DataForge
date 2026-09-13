@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   UnauthorizedException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { JwtService } from '@nestjs/jwt';
@@ -12,6 +13,8 @@ import { Agent, AgentStatus } from '../../models/agent.model';
 import { ConnectionToken } from '../../models/connection-token.model';
 import { Organization } from '../../models/organization.model';
 import { OrganizationUser } from '../../models/organization-user.model';
+import { Project } from '../../models/project.model';
+import { ProjectUser } from '../../models/project-user.model';
 import { User } from '../../models/user.model';
 import { CreateAgentDto } from './dto/create-agent.dto';
 import { GenerateConnectionTokenDto } from './dto/generate-token.dto';
@@ -31,6 +34,12 @@ export class ExecutionAgentService {
     @InjectModel(OrganizationUser)
     private readonly organizationUserModel: typeof OrganizationUser,
 
+    @InjectModel(Project)
+    private readonly projectModel: typeof Project,
+
+    @InjectModel(ProjectUser)
+    private readonly projectUserModel: typeof ProjectUser,
+
     private readonly jwtService: JwtService,
   ) {}
 
@@ -45,6 +54,8 @@ export class ExecutionAgentService {
       organizationId: data.organizationId,
       organizationName:
         data.organization?.name || 'Customer Organization (Dummy)',
+      projectId: data.projectId || null,
+      projectName: data.project?.name || null,
       status: data.status,
 
       version: 'v1.4.2 (Dummy)',
@@ -77,34 +88,51 @@ export class ExecutionAgentService {
   }
 
   async createAgent(dto: CreateAgentDto, creatorUserId: string): Promise<any> {
-    let { organizationId, name, description } = dto;
+    let { projectId, organizationId, name, description } = dto;
 
-    const orgMembership = await this.organizationUserModel.findOne({
+    if (!projectId) {
+      throw new BadRequestException(
+        'Project ID is required to register an execution agent',
+      );
+    }
+
+    const project = await this.projectModel.findByPk(projectId);
+    if (!project) {
+      throw new NotFoundException(`Project with ID ${projectId} not found`);
+    }
+
+    const projectMembership = await this.projectUserModel.findOne({
       where: {
-        organizationId,
+        projectId,
         userId: creatorUserId,
       },
     });
 
-    if (!orgMembership) {
-      throw new ForbiddenException('You are not a member of this organization');
+    if (!projectMembership) {
+      throw new ForbiddenException(
+        'You are not a member of this project and cannot add agents to it',
+      );
     }
+
+    // Automatically resolve organizationId from the project
+    const resolvedOrgId = project.organizationId || organizationId;
 
     const existingAgent = await this.agentModel.findOne({
       where: {
-        organizationId,
+        projectId,
         name: name.trim(),
       },
     });
 
     if (existingAgent) {
       throw new ConflictException(
-        `An agent with the name "${name.trim()}" already exists in this organization`,
+        `An agent with the name "${name.trim()}" already exists in this project`,
       );
     }
 
     const created = await this.agentModel.create({
-      organizationId,
+      organizationId: resolvedOrgId,
+      projectId,
       createdBy: creatorUserId,
       name: name.trim(),
       description: description ? description.trim() : null,
@@ -115,6 +143,10 @@ export class ExecutionAgentService {
       include: [
         {
           model: Organization,
+          attributes: ['id', 'name'],
+        },
+        {
+          model: Project,
           attributes: ['id', 'name'],
         },
         {
@@ -130,12 +162,37 @@ export class ExecutionAgentService {
   async getAgentsForUser(
     userId: string,
     organizationId?: string,
+    projectId?: string,
   ): Promise<any[]> {
     if (!userId) {
       throw new UnauthorizedException('Authentication required');
     }
 
-    let targetOrgIds: string[] = [];
+    // Find all projects where the user is an assigned member
+    const userProjects = await this.projectUserModel.findAll({
+      where: { userId },
+      attributes: ['projectId'],
+    });
+
+    if (!userProjects.length) {
+      return [];
+    }
+
+    const userProjectIds = userProjects.map((p) => p.projectId);
+
+    let targetProjectIds: string[] = [];
+    if (projectId) {
+      if (!userProjectIds.includes(projectId)) {
+        throw new ForbiddenException('You do not have access to this project');
+      }
+      targetProjectIds = [projectId];
+    } else {
+      targetProjectIds = userProjectIds;
+    }
+
+    const whereClause: any = {
+      projectId: targetProjectIds,
+    };
 
     if (organizationId) {
       const membership = await this.organizationUserModel.findOne({
@@ -147,26 +204,18 @@ export class ExecutionAgentService {
           'You are not a member of this organization',
         );
       }
-      targetOrgIds = [organizationId];
-    } else {
-      const userOrgs = await this.organizationUserModel.findAll({
-        where: { userId },
-        attributes: ['organizationId'],
-      });
-
-      if (!userOrgs.length) {
-        return [];
-      }
-      targetOrgIds = userOrgs.map((o) => o.organizationId);
+      whereClause.organizationId = organizationId;
     }
 
     const agents = await this.agentModel.findAll({
-      where: {
-        organizationId: targetOrgIds,
-      },
+      where: whereClause,
       include: [
         {
           model: Organization,
+          attributes: ['id', 'name'],
+        },
+        {
+          model: Project,
           attributes: ['id', 'name'],
         },
         {
@@ -196,15 +245,28 @@ export class ExecutionAgentService {
       throw new NotFoundException(`Not found`);
     }
 
-    const orgMembership = await this.organizationUserModel.findOne({
-      where: {
-        organizationId: agent.organizationId,
-        userId,
-      },
-    });
+    if (agent.projectId) {
+      const projectMembership = await this.projectUserModel.findOne({
+        where: {
+          projectId: agent.projectId,
+          userId,
+        },
+      });
 
-    if (!orgMembership) {
-      throw new ForbiddenException('You do not have access to this agent');
+      if (!projectMembership) {
+        throw new ForbiddenException('You do not have access to this agent');
+      }
+    } else {
+      const orgMembership = await this.organizationUserModel.findOne({
+        where: {
+          organizationId: agent.organizationId,
+          userId,
+        },
+      });
+
+      if (!orgMembership) {
+        throw new ForbiddenException('You do not have access to this agent');
+      }
     }
 
     const randomHex = crypto.randomBytes(32).toString('hex');
@@ -215,12 +277,6 @@ export class ExecutionAgentService {
       .update(plainToken)
       .digest('hex');
 
-    // let expiresAt: Date | null = null;
-    // if (dto?.expiresInDays && dto.expiresInDays > 0) {
-    //   expiresAt = new Date(
-    //     Date.now() + dto.expiresInDays * 24 * 60 * 60 * 1000,
-    //   );
-    // }
     let expiresAt = new Date(Date.now() + 1 * 24 * 60 * 60 * 1000);
 
     const connectionTokenRecord = await this.connectionTokenModel.create({
@@ -248,6 +304,10 @@ export class ExecutionAgentService {
           attributes: ['id', 'name'],
         },
         {
+          model: Project,
+          attributes: ['id', 'name'],
+        },
+        {
           model: User,
           attributes: ['id', 'name', 'email'],
         },
@@ -258,53 +318,38 @@ export class ExecutionAgentService {
       throw new NotFoundException(`Agent with ID ${agentId} not found`);
     }
 
-    const orgMembership = await this.organizationUserModel.findOne({
-      where: {
-        organizationId: agent.organizationId,
-        userId,
-      },
-    });
+    if (agent.projectId) {
+      const projectMembership = await this.projectUserModel.findOne({
+        where: {
+          projectId: agent.projectId,
+          userId,
+        },
+      });
 
-    if (!orgMembership) {
-      throw new ForbiddenException('You do not have access to this agent');
+      if (!projectMembership) {
+        throw new ForbiddenException('You do not have access to this agent');
+      }
+    } else {
+      const orgMembership = await this.organizationUserModel.findOne({
+        where: {
+          organizationId: agent.organizationId,
+          userId,
+        },
+      });
+
+      if (!orgMembership) {
+        throw new ForbiddenException('You do not have access to this agent');
+      }
     }
 
     return this.formatAgent(agent);
-  }
-
-  async getAgentsByOrganization(
-    organizationId: string,
-    userId: string,
-  ): Promise<Agent[]> {
-    const orgMembership = await this.organizationUserModel.findOne({
-      where: {
-        organizationId,
-        userId,
-      },
-    });
-
-    if (!orgMembership) {
-      throw new ForbiddenException(
-        'You do not have access to agents in this organization',
-      );
-    }
-
-    return this.agentModel.findAll({
-      where: { organizationId },
-      include: [
-        {
-          model: User,
-          attributes: ['id', 'name', 'email'],
-        },
-      ],
-      order: [['createdAt', 'DESC']],
-    });
   }
 
   async verifyConnectionToken(token: string): Promise<{
     accessToken: string;
     agentId: string;
     organizationId: string;
+    projectId: string | null;
   }> {
     if (!token || typeof token !== 'string' || !token.trim()) {
       throw new UnauthorizedException('Connection token is required');
@@ -323,6 +368,12 @@ export class ExecutionAgentService {
       include: [
         {
           model: Agent,
+          include: [
+            {
+              model: Project,
+              attributes: ['id', 'name'],
+            },
+          ],
         },
       ],
     });
@@ -370,6 +421,7 @@ export class ExecutionAgentService {
       {
         agent_id: agent.id,
         organization_id: agent.organizationId,
+        project_id: agent.projectId,
         type: 'ea_token',
       },
       {
@@ -382,6 +434,7 @@ export class ExecutionAgentService {
       accessToken: jwtToken,
       agentId: agent.id,
       organizationId: agent.organizationId,
+      projectId: agent.projectId || null,
     };
   }
 
@@ -394,21 +447,19 @@ export class ExecutionAgentService {
       throw new NotFoundException(`Agent with ID ${agentId} not found`);
     }
 
-    const orgMembership = await this.organizationUserModel.findOne({
+    const projectMembership = await this.projectUserModel.findOne({
       where: {
-        organizationId: agent.organizationId,
+        projectId: agent.projectId,
         userId,
       },
     });
 
-    if (!orgMembership) {
+    if (!projectMembership) {
       throw new ForbiddenException(
         'You do not have permission to delete this agent',
       );
     }
 
-    // PostgreSQL database-level foreign key constraint (ON DELETE CASCADE)
-    // automatically deletes all related connection tokens in a single atomic delete.
     await agent.destroy();
 
     return {

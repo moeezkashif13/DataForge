@@ -23,6 +23,7 @@ export class ExecutionAgentController {
   async getAgents(
     @CurrentUser() user: { id: string } | null,
     @Query('organizationId') organizationId?: string,
+    @Query('projectId') projectId?: string,
   ) {
     if (!user?.id) {
       throw new UnauthorizedException(
@@ -34,6 +35,7 @@ export class ExecutionAgentController {
       const agents = await this.executionAgentService.getAgentsForUser(
         user.id,
         organizationId,
+        projectId,
       );
 
       return {

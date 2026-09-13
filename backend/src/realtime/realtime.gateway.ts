@@ -20,6 +20,7 @@ import { Project } from '../../models/project.model';
 interface SocketData {
   agentId?: string;
   organizationId?: string;
+  projectId?: string;
   authenticated?: boolean;
 }
 
@@ -121,6 +122,16 @@ export class RealtimeGateway
                 disconnectedAt: new Date().toISOString(),
               });
             }
+
+            // Notify project room
+            const projId = (client.data as SocketData)?.projectId;
+            if (projId && this.server) {
+              this.server.to(`project:${projId}`).emit('agent:status', {
+                agentId,
+                status: AgentStatus.ACTIVE,
+                disconnectedAt: new Date().toISOString(),
+              });
+            }
           } catch (err: any) {
             this.logger.error(
               `Failed to update agent disconnected status: ${err.message}`,
@@ -148,6 +159,7 @@ export class RealtimeGateway
       const payload = this.jwtService.verify(token, { secret }) as {
         agent_id?: string;
         organization_id?: string;
+        project_id?: string;
         type?: string;
       };
 
@@ -160,12 +172,22 @@ export class RealtimeGateway
       }
 
       const agentId = payload.agent_id;
-      const organizationId = payload.organization_id;
+      let organizationId = payload.organization_id;
+      let projectId = payload.project_id;
+
+      if (!projectId) {
+        const dbAgent = await this.agentModel.findByPk(agentId);
+        if (dbAgent) {
+          projectId = dbAgent.projectId;
+          organizationId = organizationId || dbAgent.organizationId;
+        }
+      }
 
       // Associate socket data
       client.data = {
         agentId,
         organizationId,
+        projectId,
         authenticated: true,
       };
 
@@ -173,6 +195,9 @@ export class RealtimeGateway
       client.join(`agent:${agentId}`);
       if (organizationId) {
         client.join(`org:${organizationId}`);
+      }
+      if (projectId) {
+        client.join(`project:${projectId}`);
       }
 
       // Track in connected agents map
@@ -205,6 +230,15 @@ export class RealtimeGateway
       // Notify organization room that agent is online
       if (organizationId && this.server) {
         this.server.to(`org:${organizationId}`).emit('agent:status', {
+          agentId,
+          connected: AgentStatus.CONNECTED,
+          connectedAt: new Date().toISOString(),
+        });
+      }
+
+      // Notify project room that agent is online
+      if (projectId && this.server) {
+        this.server.to(`project:${projectId}`).emit('agent:status', {
           agentId,
           connected: AgentStatus.CONNECTED,
           connectedAt: new Date().toISOString(),

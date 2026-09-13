@@ -14,9 +14,11 @@ import {
   Loader2,
   Terminal,
   Trash2,
+  FolderKanban,
 } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { useGenerateAgentTokenMutation } from "../store/api/agentsApi";
+import { useGetProjectsQuery } from "../store/api/projectsApi";
 import { useToast } from "../context/ToastContext";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { EmptyState } from "../components/ui/EmptyState";
@@ -26,8 +28,10 @@ export default function Agents() {
   const { agents, deleteAgent } = useData();
   const { showToast } = useToast();
   const [generateAgentTokenMutation] = useGenerateAgentTokenMutation();
+  const { data: apiProjects = [] } = useGetProjectsQuery();
 
   const [filterStatus, setFilterStatus] = useState("ALL");
+  const [filterProject, setFilterProject] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [generatingAgentId, setGeneratingAgentId] = useState(null);
   const [tokenModalData, setTokenModalData] = useState(null);
@@ -38,11 +42,13 @@ export default function Agents() {
 
   const filteredAgents = agents.filter((a) => {
     const matchStatus = filterStatus === "ALL" || a.status === filterStatus;
+    const matchProject = filterProject === "ALL" || a.projectId === filterProject;
     const matchSearch =
       (a.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (a.host || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (a.projectName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (a.environment || "").toLowerCase().includes(searchQuery.toLowerCase());
-    return matchStatus && matchSearch;
+    return matchStatus && matchProject && matchSearch;
   });
 
   const handleGenerateToken = async (agent) => {
@@ -188,15 +194,34 @@ export default function Agents() {
           ))}
         </div>
 
-        <div className="relative w-full sm:w-64">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search agents by name, host..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3.5 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-hidden focus:border-indigo-500 text-slate-900 dark:text-slate-100 placeholder-slate-400"
-          />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
+          {apiProjects.length > 0 && (
+            <div className="relative">
+              <select
+                value={filterProject}
+                onChange={(e) => setFilterProject(e.target.value)}
+                className="w-full sm:w-auto px-3 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
+              >
+                <option value="ALL">All Projects</option>
+                {apiProjects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search agents by name, host..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3.5 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-hidden focus:border-indigo-500 text-slate-900 dark:text-slate-100 placeholder-slate-400"
+            />
+          </div>
         </div>
       </div>
 
@@ -222,9 +247,17 @@ export default function Agents() {
                     <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                       {agent.name}
                     </h3>
-                    <p className="text-[11px] font-mono text-slate-400 mt-0.5">
-                      {agent.host}
-                    </p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <p className="text-[11px] font-mono text-slate-400">
+                        {agent.host}
+                      </p>
+                      {agent.projectName && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-1.5 py-0.2 rounded border border-indigo-100 dark:border-indigo-900/40">
+                          <FolderKanban className="w-2.5 h-2.5" />
+                          {agent.projectName}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <StatusBadge status={agent.status} />
