@@ -78,6 +78,23 @@ export class RealtimeService {
   }
 
   /**
+   * Send a structured command to frontend room or client (emits 'backend:command')
+   */
+  sendCommandToFrontend(
+    target: string,
+    type: string,
+    payload?: any,
+    meta?: any,
+  ): boolean {
+    return this.realtimeGateway.sendCommandToFrontend(
+      target,
+      type,
+      payload,
+      meta,
+    );
+  }
+
+  /**
    * Direct access to the Socket.IO Server instance.
    */
   getServer() {

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import { ToastProvider } from "./context/ToastContext";
+import { SocketProvider } from "./context/SocketContext";
 import { DataProvider } from "./context/DataContext";
 
 // Layouts
@@ -40,8 +41,9 @@ export default function App() {
 
   return (
     <ToastProvider>
-      <DataProvider>
-        <BrowserRouter>
+      <SocketProvider>
+        <DataProvider>
+          <BrowserRouter>
           <Routes>
             {/* Public Authentication Routes */}
             <Route path="/auth" element={<AuthLayout />}>
@@ -114,6 +116,7 @@ export default function App() {
           </Routes>
         </BrowserRouter>
       </DataProvider>
-    </ToastProvider>
+    </SocketProvider>
+  </ToastProvider>
   );
 }

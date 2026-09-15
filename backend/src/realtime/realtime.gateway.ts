@@ -22,6 +22,7 @@ interface SocketData {
   organizationId?: string;
   projectId?: string;
   authenticated?: boolean;
+  clientType?: 'agent' | 'frontend' | 'unknown';
 }
 
 @WebSocketGateway({
@@ -74,6 +75,25 @@ export class RealtimeGateway
 
   async handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
+
+    const clientType =
+      client.handshake.auth?.clientType ||
+      client.handshake.query?.clientType;
+
+    // Handle Frontend client connection
+    if (clientType === 'frontend') {
+      client.data = {
+        clientType: 'frontend',
+        authenticated: true,
+      };
+      this.logger.log(`[Frontend] Web client connected: ${client.id}`);
+      client.emit('frontend:connected', {
+        status: 'connected',
+        socketId: client.id,
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
 
     // Extract auth token from handshake auth, query, or headers
     const rawToken =
@@ -409,6 +429,87 @@ export class RealtimeGateway
       return { status: 'left', room: payload.room };
     }
     return { status: 'error', message: 'Room name is required' };
+  }
+
+  /**
+   * Listen for commands emitted by the Frontend
+   */
+  @SubscribeMessage('frontend:command')
+  async handleFrontendCommand(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    payload: {
+      type: string;
+      payload?: any;
+      meta?: {
+        timestamp?: string;
+        projectId?: string;
+        organizationId?: string;
+        correlationId?: string;
+      };
+    },
+  ) {
+    const commandType = payload?.type || 'UNKNOWN';
+    this.logger.log(
+      `[Frontend Command from ${client.id}]: Type="${commandType}" Payload=${JSON.stringify(payload?.payload || {})}`,
+    );
+
+    const { type, payload: commandData, meta } = payload || {};
+
+    // Forward to project room if requested
+    if (meta?.projectId) {
+      this.server.to(`project:${meta.projectId}`).emit('backend:command', {
+        type: `${type}`,
+        payload: commandData,
+        meta: {
+          timestamp: new Date().toISOString(),
+          fromSocketId: client.id,
+          ...meta,
+        },
+      });
+    }
+
+    // Forward to organization room if requested
+    if (meta?.organizationId) {
+      this.server.to(`org:${meta.organizationId}`).emit('backend:command', {
+        type: `${type}`,
+        payload: commandData,
+        meta: {
+          timestamp: new Date().toISOString(),
+          fromSocketId: client.id,
+          ...meta,
+        },
+      });
+    }
+
+    return {
+      status: 'acknowledged',
+      type: commandType,
+      receivedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Send a structured command to a frontend room or specific client socket
+   */
+  sendCommandToFrontend(
+    target: string, // e.g. "project:123", "org:456", or specific socketId
+    type: string,
+    payload?: any,
+    meta?: any,
+  ): boolean {
+    if (!this.server) return false;
+    const envelope = {
+      type,
+      payload,
+      meta: {
+        timestamp: new Date().toISOString(),
+        ...meta,
+      },
+    };
+    this.server.to(target).emit('backend:command', envelope);
+    this.logger.log(`[Backend Command] Sent "${type}" to target "${target}"`);
+    return true;
   }
 
   private extractBearerToken(authHeader?: string | string[]): string | null {
