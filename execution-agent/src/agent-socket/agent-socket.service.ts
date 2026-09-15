@@ -5,6 +5,7 @@ import {
   OnModuleDestroy,
 } from '@nestjs/common';
 import { io, Socket } from 'socket.io-client';
+import { BackgroundJobsService } from '../background-jobs/background-jobs.service';
 
 export interface ConnectOptions {
   token?: string;
@@ -20,10 +21,37 @@ export class AgentSocketService implements OnModuleInit, OnModuleDestroy {
   private currentOrganizationId: string | null = null;
   private isAgentConnected = false;
 
+  constructor(private readonly backgroundJobsService: BackgroundJobsService) {}
+
   onModuleInit() {}
 
   onModuleDestroy() {
     this.disconnect();
+  }
+
+  async processMigrations(payload?: any) {
+    this.logger.log(
+      `[PROCESS_MIGRATION] Received migration command. Enqueuing to BullMQ background queue...`,
+    );
+    console.log(payload);
+
+    // try {
+    //   const job = await this.backgroundJobsService.addMigrationJob({
+    //     agentId: this.currentAgentId || payload?.agentId,
+    //     organizationId: this.currentOrganizationId || payload?.organizationId,
+    //     count: payload?.count,
+    //     migrations: payload?.migrations,
+    //   });
+    //   this.logger.log(
+    //     `[PROCESS_MIGRATION] Successfully queued job in BullMQ (Job ID: ${job.id})`,
+    //   );
+    //   return job;
+    // } catch (err: any) {
+    //   this.logger.error(
+    //     `[PROCESS_MIGRATION] Failed to enqueue migration into BullMQ: ${err.message}`,
+    //     err.stack,
+    //   );
+    // }
   }
 
   /**
@@ -150,6 +178,9 @@ export class AgentSocketService implements OnModuleInit, OnModuleDestroy {
         this.logger.log(
           `[1-to-1 Command from Backend]:\n${JSON.stringify(payload, null, 2)}`,
         );
+        if (payload.command == 'PROCESS_MIGRATION') {
+          void this.processMigrations(payload);
+        }
       });
 
       // Resolve within 5 seconds even if socket is still negotiating

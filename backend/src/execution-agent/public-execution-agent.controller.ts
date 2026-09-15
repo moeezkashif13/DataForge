@@ -23,10 +23,7 @@ export class PublicExecutionAgentController {
 
   @AllowAnonymous()
   @Post(':agentId/command')
-  async sendCommand(
-    @Param('agentId') agentId: string,
-    @Body() body: any,
-  ) {
+  async sendCommand(@Param('agentId') agentId: string, @Body() body: any) {
     const isConnected = this.realtimeService.isAgentConnected(agentId);
     const sent = this.realtimeService.sendToAgent(
       agentId,

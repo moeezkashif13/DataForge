@@ -2,12 +2,15 @@ import { Body, Controller, Get, Post, Query, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AppService } from './app.service';
 import { AgentSocketService } from './agent-socket/agent-socket.service';
+import { BackgroundJobsService } from './background-jobs/background-jobs.service';
+import type { MigrationJobData } from './background-jobs/background-jobs.types';
 
 @Controller()
 export class AppController {
   constructor(
     private readonly appService: AppService,
     private readonly agentSocketService: AgentSocketService,
+    private readonly backgroundJobsService: BackgroundJobsService,
   ) {}
 
   @Post('connect')

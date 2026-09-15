@@ -246,7 +246,12 @@ export class RealtimeGateway
       }
 
       // Automatically check and dispatch pending migrations for this agent
-      // await this.dispatchPendingMigrations(client, agentId, organizationId);
+      await this.dispatchPendingMigrations(
+        client,
+        agentId,
+        projectId as string,
+        organizationId,
+      );
 
       return true;
     } catch (error: any) {
@@ -267,13 +272,16 @@ export class RealtimeGateway
   async dispatchPendingMigrations(
     client: Socket,
     agentId: string,
+    projectId: string,
     organizationId?: string,
   ) {
     try {
-      const projectWhere: any = {};
-      if (organizationId) {
-        projectWhere.organizationId = organizationId;
-      }
+      const projectWhere = {
+        project: projectId,
+      };
+      // if (organizationId) {
+      //   projectWhere.organizationId = organizationId;
+      // }
 
       const pendingMigrations = await this.migrationModel.findAll({
         where: {
@@ -282,39 +290,39 @@ export class RealtimeGateway
         include: [
           {
             model: Project,
-            where:
-              Object.keys(projectWhere).length > 0 ? projectWhere : undefined,
+            // where: projectId?projectId:undefined,
+            // Object.keys(projectWhere).length > 0 ? projectWhere : undefined,
             attributes: ['id', 'name', 'organizationId'],
           },
         ],
         order: [['createdAt', 'ASC']],
       });
 
-      const formattedMigrations = pendingMigrations.map((m) => ({
-        id: m.id,
-        name: m.name,
-        description: m.description,
-        status: m.status,
-        projectId: m.projectId,
-        projectName: m.project?.name || null,
-        createdAt: m.createdAt,
-      }));
+      // const formattedMigrations = pendingMigrations.map((m) => ({
+      //   id: m.id,
+      //   name: m.name,
+      //   description: m.description,
+      //   status: m.status,
+      //   projectId: m.projectId,
+      //   projectName: m.project?.name || null,
+      //   createdAt: m.createdAt,
+      // }));
 
       const payload = {
         agentId,
         organizationId: organizationId || null,
-        count: formattedMigrations.length,
-        migrations: formattedMigrations,
+        count: pendingMigrations.length,
+        migrations: pendingMigrations,
         message:
-          formattedMigrations.length > 0
-            ? `Found ${formattedMigrations.length} pending migration(s) available for processing.`
+          pendingMigrations.length > 0
+            ? `Found ${pendingMigrations.length} pending migration(s) available for processing.`
             : 'No pending migrations found at this time.',
         timestamp: new Date().toISOString(),
       };
 
-      if (formattedMigrations.length > 0) {
+      if (pendingMigrations.length > 0) {
         this.logger.log(
-          `Found ${formattedMigrations.length} pending migration(s) for agent [${agentId}]. Sending details...`,
+          `Found ${pendingMigrations.length} pending migration(s) for agent [${agentId}]. Sending details...`,
         );
       } else {
         this.logger.log(`No pending migrations found for agent [${agentId}].`);
