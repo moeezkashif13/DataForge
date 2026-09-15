@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { io, Socket } from 'socket.io-client';
 import { BackgroundJobsService } from '../background-jobs/background-jobs.service';
+import type { MigrationJobData } from '../background-jobs/background-jobs.types';
 
 export interface ConnectOptions {
   token?: string;
@@ -30,28 +31,41 @@ export class AgentSocketService implements OnModuleInit, OnModuleDestroy {
   }
 
   async processMigrations(payload?: any) {
-    this.logger.log(
-      `[PROCESS_MIGRATION] Received migration command. Enqueuing to BullMQ background queue...`,
-    );
-    console.log(payload);
+    const migrations: any[] = Array.isArray(payload?.migrations)
+      ? payload.migrations
+      : [];
 
-    // try {
-    //   const job = await this.backgroundJobsService.addMigrationJob({
-    //     agentId: this.currentAgentId || payload?.agentId,
-    //     organizationId: this.currentOrganizationId || payload?.organizationId,
-    //     count: payload?.count,
-    //     migrations: payload?.migrations,
-    //   });
-    //   this.logger.log(
-    //     `[PROCESS_MIGRATION] Successfully queued job in BullMQ (Job ID: ${job.id})`,
-    //   );
-    //   return job;
-    // } catch (err: any) {
-    //   this.logger.error(
-    //     `[PROCESS_MIGRATION] Failed to enqueue migration into BullMQ: ${err.message}`,
-    //     err.stack,
-    //   );
-    // }
+    this.logger.log(
+      `[PROCESS_MIGRATION] Received migration command with ${migrations.length} migration(s). Creating a background job per migration...`,
+    );
+
+    if (migrations.length === 0) {
+      this.logger.warn(
+        '[PROCESS_MIGRATION] No migrations found in payload to process.',
+      );
+      return;
+    }
+
+    for (const migration of migrations) {
+      const jobData: MigrationJobData = {
+        agentId: payload?.agentId,
+        organizationId: payload?.organizationId,
+        projectId: migration?.projectId,
+        migration,
+      };
+
+      try {
+        const job = await this.backgroundJobsService.addMigrationJob(jobData);
+        this.logger.log(
+          `[PROCESS_MIGRATION] Enqueued BullMQ job #${job.id} for migration "${migration?.name || migration.id}" (Project: ${migration?.projectId})`,
+        );
+      } catch (err: any) {
+        this.logger.error(
+          `[PROCESS_MIGRATION] Failed to enqueue migration "${migration.id}": ${err.message}`,
+          err.stack,
+        );
+      }
+    }
   }
 
   /**

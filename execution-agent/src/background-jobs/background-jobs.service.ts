@@ -23,9 +23,7 @@ export class BackgroundJobsService {
     data: MigrationJobData,
     options?: JobsOptions,
   ): Promise<Job<MigrationJobData, MigrationJobResult>> {
-    const jobName = data.migrationId
-      ? `migration-${data.migrationId}`
-      : 'process-migration';
+    const jobName = `migration-${data.migration?.id}`;
 
     const defaultOptions: JobsOptions = {
       attempts: 3,

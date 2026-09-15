@@ -20,8 +20,12 @@ export class BackgroundJobsProcessor extends WorkerHost {
     const { id, name, data } = job;
     const startTime = Date.now();
 
+    const migration = data.migration;
+    const migrationId = migration?.id || (data as any).migrationId || 'unknown';
+    const migrationName = migration?.name || name;
+
     this.logger.log(
-      `[Worker Start] Processing job #${id} ("${name}") for migration: ${data.migrationId || 'bulk-migration'}`,
+      `[Worker Start] Processing job #${id} ("${name}") for migration: "${migrationName}" (ID: ${migrationId}) | Project: ${data.projectId} | Org: ${data.organizationId} | Agent: ${data.agentId}`,
     );
 
     try {
@@ -30,8 +34,7 @@ export class BackgroundJobsProcessor extends WorkerHost {
         percentage: 10,
         rowsProcessed: 0,
         stage: 'INITIALIZING',
-        message:
-          'Validating migration parameters and establishing database connection...',
+        message: `Validating migration "${migrationName}" parameters (${migration?.source_type || 'source'} -> ${migration?.target_type || 'target'})...`,
       });
 
       // Simulate step / yield to event loop
@@ -40,31 +43,31 @@ export class BackgroundJobsProcessor extends WorkerHost {
       // Step 2: Running migration workload
       await job.updateProgress({
         percentage: 50,
-        rowsProcessed: data.count || 1000,
+        rowsProcessed: 1000,
         stage: 'MIGRATING',
-        message: `Processing migration workload (batch size: ${data.batchSize || 1000})...`,
+        message: `Processing source "${migration?.source_file_path || migration?.source_table || 'source'}" -> target table "${migration?.target_table || 'target'}"...`,
       });
 
       // Step 3: Completing
       await job.updateProgress({
         percentage: 100,
-        rowsProcessed: data.count || 1000,
+        rowsProcessed: 1000,
         stage: 'COMPLETED',
-        message: 'All migration batches successfully processed and committed.',
+        message: `Migration "${migrationName}" successfully processed and committed.`,
       });
 
       const elapsedSeconds = ((Date.now() - startTime) / 1000).toFixed(2);
       this.logger.log(
-        `[Worker Completed] Job #${id} finished in ${elapsedSeconds}s`,
+        `[Worker Completed] Job #${id} ("${migrationName}") finished in ${elapsedSeconds}s`,
       );
 
       return {
         success: true,
-        migrationId: data.migrationId,
-        rowsInserted: data.count || 1000,
-        totalInserted: data.count || 1000,
+        migrationId,
+        rowsInserted: 1000,
+        totalInserted: 1000,
         elapsedSeconds,
-        message: `Successfully executed background job #${id}`,
+        message: `Successfully executed background job #${id} for migration "${migrationName}"`,
       };
     } catch (err: any) {
       this.logger.error(
