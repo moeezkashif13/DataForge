@@ -92,6 +92,17 @@ export default function MigrationDetail() {
             (draft) => {
               if (draft) {
                 draft.status = newStatus;
+                if (
+                  String(newStatus).toUpperCase() === "COMPLETED" ||
+                  payload?.progress === 100
+                ) {
+                  draft.progress = 100;
+                  if (payload?.rowsInserted) {
+                    draft.recordsProcessed = payload.rowsInserted;
+                  }
+                } else if (payload?.progress !== undefined) {
+                  draft.progress = payload.progress;
+                }
               }
             },
           ),

@@ -61,6 +61,14 @@ export default function Migrations() {
               const target = draft.find((m) => m.id === migrationId);
               if (target) {
                 target.status = newStatus;
+                if (
+                  String(newStatus).toUpperCase() === "COMPLETED" ||
+                  payload?.progress === 100
+                ) {
+                  target.progress = 100;
+                } else if (payload?.progress !== undefined) {
+                  target.progress = payload.progress;
+                }
               }
             },
           ),

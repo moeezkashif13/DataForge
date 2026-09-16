@@ -584,6 +584,194 @@ export class RealtimeGateway
     };
   }
 
+  @SubscribeMessage('agent:migration:completed')
+  async handleAgentMigrationCompleted(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    payload: {
+      migrationId?: string;
+      agentId?: string;
+      projectId?: string;
+      organizationId?: string;
+      status?: string;
+      rowsInserted?: number;
+      totalDurationSec?: string;
+      timestamp?: string;
+    },
+  ) {
+    const { migrationId, agentId, projectId, organizationId } = payload || {};
+
+    this.logger.log(
+      `[Agent Event] Migration completed execution: ID="${migrationId}" | Agent="${agentId}" | Rows=${payload?.rowsInserted} in ${payload?.totalDurationSec}s`,
+    );
+
+    if (migrationId) {
+      // 1. Update database record to 'Completed'
+      try {
+        await this.migrationModel.update(
+          { status: MigrationStatus.COMPLETED } as any,
+          { where: { id: migrationId }, validate: false },
+        );
+        this.logger.log(
+          `[Database] Migration [${migrationId}] status updated to "${MigrationStatus.COMPLETED}"`,
+        );
+      } catch (err: any) {
+        this.logger.error(
+          `[Database] Failed to update migration [${migrationId}] status to Completed: ${err.message}`,
+        );
+      }
+
+      // 2. Broadcast status change exclusively to the organization room
+      let targetOrgId = organizationId;
+      if (!targetOrgId) {
+        try {
+          const migrationRecord = await this.migrationModel.findByPk(
+            migrationId,
+            {
+              include: [
+                { model: Project, attributes: ['id', 'organizationId'] },
+              ],
+            },
+          );
+          targetOrgId =
+            migrationRecord?.project?.organizationId ||
+            (migrationRecord as any)?.organizationId;
+        } catch {}
+      }
+
+      const eventPayload = {
+        migrationId,
+        status: MigrationStatus.COMPLETED,
+        agentId,
+        projectId,
+        organizationId: targetOrgId,
+        rowsInserted: payload?.rowsInserted,
+        totalDurationSec: payload?.totalDurationSec,
+        progress: 100,
+        timestamp: new Date().toISOString(),
+      };
+
+      const commandEnvelope = {
+        type: 'MIGRATION_STATUS_CHANGED',
+        payload: eventPayload,
+        meta: {
+          timestamp: new Date().toISOString(),
+          organizationId: targetOrgId,
+          projectId,
+        },
+      };
+
+      if (targetOrgId) {
+        this.server
+          .to(`org:${targetOrgId}`)
+          .emit('backend:command', commandEnvelope);
+        this.logger.log(
+          `[Realtime] Emitted MIGRATION_STATUS_CHANGED (Completed) exclusively to room "org:${targetOrgId}" for migration "${migrationId}"`,
+        );
+      } else {
+        this.logger.warn(
+          `[Realtime] Could not determine organizationId for migration "${migrationId}". Status update was not broadcast.`,
+        );
+      }
+    }
+
+    return {
+      status: 'acknowledged',
+      migrationId,
+      newStatus: MigrationStatus.COMPLETED,
+    };
+  }
+
+  @SubscribeMessage('agent:migration:failed')
+  async handleAgentMigrationFailed(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    payload: {
+      migrationId?: string;
+      agentId?: string;
+      projectId?: string;
+      organizationId?: string;
+      status?: string;
+      error?: string;
+      timestamp?: string;
+    },
+  ) {
+    const { migrationId, agentId, projectId, organizationId, error } =
+      payload || {};
+
+    this.logger.error(
+      `[Agent Event] Migration failed execution: ID="${migrationId}" | Agent="${agentId}" | Error="${error}"`,
+    );
+
+    if (migrationId) {
+      try {
+        await this.migrationModel.update(
+          { status: MigrationStatus.FAILED } as any,
+          { where: { id: migrationId }, validate: false },
+        );
+        this.logger.log(
+          `[Database] Migration [${migrationId}] status updated to "${MigrationStatus.FAILED}"`,
+        );
+      } catch (err: any) {
+        this.logger.error(
+          `[Database] Failed to update migration [${migrationId}] status to Failed: ${err.message}`,
+        );
+      }
+
+      let targetOrgId = organizationId;
+      if (!targetOrgId) {
+        try {
+          const migrationRecord = await this.migrationModel.findByPk(
+            migrationId,
+            {
+              include: [
+                { model: Project, attributes: ['id', 'organizationId'] },
+              ],
+            },
+          );
+          targetOrgId =
+            migrationRecord?.project?.organizationId ||
+            (migrationRecord as any)?.organizationId;
+        } catch {}
+      }
+
+      const eventPayload = {
+        migrationId,
+        status: MigrationStatus.FAILED,
+        agentId,
+        projectId,
+        organizationId: targetOrgId,
+        error,
+        timestamp: new Date().toISOString(),
+      };
+
+      const commandEnvelope = {
+        type: 'MIGRATION_STATUS_CHANGED',
+        payload: eventPayload,
+        meta: {
+          timestamp: new Date().toISOString(),
+          organizationId: targetOrgId,
+          projectId,
+        },
+      };
+
+      if (targetOrgId) {
+        this.server
+          .to(`org:${targetOrgId}`)
+          .emit('backend:command', commandEnvelope);
+        this.logger.log(
+          `[Realtime] Emitted MIGRATION_STATUS_CHANGED (Failed) exclusively to room "org:${targetOrgId}" for migration "${migrationId}"`,
+        );
+      }
+    }
+
+    return {
+      status: 'acknowledged',
+      migrationId,
+      newStatus: MigrationStatus.FAILED,
+    };
+  }
+
   /**
    * Send a structured command to a frontend room or specific client socket
    */

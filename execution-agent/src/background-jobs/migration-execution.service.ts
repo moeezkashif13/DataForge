@@ -230,7 +230,6 @@ export class MigrationExecutionService {
     const migration = data.migration;
 
     const migrationId = migration?.id || 'unknown';
-    console.log(migrationId, 'lllllllllllll');
     const migrationName = migration?.name || `Migration #${id}`;
     const targetTable = migration?.target_table || 'customers';
     const targetDatabase = migration?.target_database || 'client_db';
@@ -396,6 +395,26 @@ export class MigrationExecutionService {
         `[Migration Completed] Job #${id} finished: ${totalInserted.toLocaleString()} rows inserted in ${totalDurationSec}s`,
       );
 
+      // Notify backend that migration execution has completed (changes status to Completed)
+      if (migrationId && migrationId !== 'unknown') {
+        this.agentSocketService.sendMessageToBackend(
+          'agent:migration:completed',
+          {
+            migrationId,
+            agentId: data.agentId,
+            projectId: data.projectId,
+            organizationId: data.organizationId,
+            status: 'Completed',
+            rowsInserted: totalInserted,
+            totalDurationSec,
+            timestamp: new Date().toISOString(),
+          },
+        );
+        this.logger.log(
+          `[Migration Completed] Sent agent:migration:completed to backend for migration "${migrationName}" (${migrationId})`,
+        );
+      }
+
       return {
         success: true,
         migrationId,
@@ -409,6 +428,20 @@ export class MigrationExecutionService {
         `[Migration Pipeline Error] Job #${id} failed: ${err.message}`,
         err.stack,
       );
+
+      // Notify backend that migration execution failed
+      if (migrationId && migrationId !== 'unknown') {
+        this.agentSocketService.sendMessageToBackend('agent:migration:failed', {
+          migrationId,
+          agentId: data.agentId,
+          projectId: data.projectId,
+          organizationId: data.organizationId,
+          status: 'Failed',
+          error: err.message,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
       throw err;
     } finally {
       if (dbClient) {
