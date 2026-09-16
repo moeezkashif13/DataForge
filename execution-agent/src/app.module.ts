@@ -8,5 +8,6 @@ import { BackgroundJobsModule } from './background-jobs/background-jobs.module';
   imports: [BackgroundJobsModule],
   controllers: [AppController],
   providers: [AppService, AgentSocketService],
+  exports: [AgentSocketService],
 })
 export class AppModule {}

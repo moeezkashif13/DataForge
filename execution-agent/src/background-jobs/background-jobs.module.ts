@@ -1,12 +1,14 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { BackgroundJobsService } from './background-jobs.service';
 import { BackgroundJobsProcessor } from './background-jobs.processor';
 import { MigrationExecutionService } from './migration-execution.service';
 import { MIGRATION_QUEUE } from './background-jobs.types';
+import { AppModule } from '../app.module';
 
 @Module({
   imports: [
+    forwardRef(() => AppModule),
     BullModule.forRootAsync({
       useFactory: () => ({
         connection: {

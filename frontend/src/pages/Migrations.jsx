@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
+import { useDispatch } from "react-redux";
 import {
   ArrowRightLeft,
   Plus,
@@ -11,15 +12,20 @@ import {
   Loader2,
 } from "lucide-react";
 import {
+  migrationsApi,
   useGetMigrationsQuery,
   useDeleteMigrationMutation,
 } from "../store/api/migrationsApi";
 import { useToast } from "../context/ToastContext";
+import { useSocket } from "../context/SocketContext";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 
 export default function Migrations() {
+  const dispatch = useDispatch();
+  const { onCommand, socket } = useSocket();
+
   const {
     data: migrations = [],
     isLoading,
@@ -34,6 +40,46 @@ export default function Migrations() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMigForDelete, setSelectedMigForDelete] = useState(null);
+
+  // Real-time status update listener from backend
+  useEffect(() => {
+    const handleStatusUpdate = (payload) => {
+      console.log(
+        "[Migrations Page] Real-time status update received:",
+        payload,
+      );
+      const migrationId = payload?.migrationId;
+      const newStatus = payload?.status || "Running";
+
+      if (migrationId) {
+        // Optimistically update RTK Query cache so UI changes instantly
+        dispatch(
+          migrationsApi.util.updateQueryData(
+            "getMigrations",
+            undefined,
+            (draft) => {
+              const target = draft.find((m) => m.id === migrationId);
+              if (target) {
+                target.status = newStatus;
+              }
+            },
+          ),
+        );
+      }
+      // Also refetch for fresh backend consistency
+      refetch();
+    };
+
+    // Listen to command envelope sent to org room
+    const unsubscribe = onCommand(
+      "MIGRATION_STATUS_CHANGED",
+      handleStatusUpdate,
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [onCommand, dispatch, refetch]);
 
   const filteredMigrations = migrations.filter((m) => {
     const matchStatus =

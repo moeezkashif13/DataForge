@@ -182,6 +182,11 @@ export class Migration extends Model<Migration> {
   }
 
   static validateSourceFields(instance: Migration) {
+    // If source_type is not provided (e.g. partial update), skip validation
+    if (instance.source_type === undefined) {
+      return;
+    }
+
     if (!instance.source_type) {
       throw new Error('source_type is required and cannot be null');
     }
@@ -204,30 +209,41 @@ export class Migration extends Model<Migration> {
       instance.source_type === MigrationSourceType.MYSQL ||
       instance.source_type === MigrationSourceType.POSTGRESQL
     ) {
-      if (!instance.source_database || !instance.source_database.trim()) {
-        throw new Error(
-          `source_database cannot be null or empty when source_type is "${instance.source_type}"`,
-        );
+      if (instance.source_database !== undefined) {
+        if (!instance.source_database || !instance.source_database.trim()) {
+          throw new Error(
+            `source_database cannot be null or empty when source_type is "${instance.source_type}"`,
+          );
+        }
       }
-      if (!instance.source_table || !instance.source_table.trim()) {
-        throw new Error(
-          `source_table cannot be null or empty when source_type is "${instance.source_type}"`,
-        );
+      if (instance.source_table !== undefined) {
+        if (!instance.source_table || !instance.source_table.trim()) {
+          throw new Error(
+            `source_table cannot be null or empty when source_type is "${instance.source_type}"`,
+          );
+        }
       }
     } else if (
       instance.source_type === MigrationSourceType.CSV ||
       instance.source_type === MigrationSourceType.JSON ||
       instance.source_type === MigrationSourceType.S3
     ) {
-      if (!instance.source_file_path || !instance.source_file_path.trim()) {
-        throw new Error(
-          `source_file_path cannot be null or empty when source_type is "${instance.source_type}"`,
-        );
+      if (instance.source_file_path !== undefined) {
+        if (!instance.source_file_path || !instance.source_file_path.trim()) {
+          throw new Error(
+            `source_file_path cannot be null or empty when source_type is "${instance.source_type}"`,
+          );
+        }
       }
     }
   }
 
   static validateTargetFields(instance: Migration) {
+    // If target_type is not provided (e.g. partial update), skip validation
+    if (instance.target_type === undefined) {
+      return;
+    }
+
     if (!instance.target_type) {
       throw new Error('target_type is required and cannot be null');
     }
@@ -246,17 +262,26 @@ export class Migration extends Model<Migration> {
       instance.target_schema = 'public';
     }
 
-    if (!instance.target_database || !instance.target_database.trim()) {
-      throw new Error('target_database is required and cannot be null');
+    if (instance.target_database !== undefined) {
+      if (!instance.target_database || !instance.target_database.trim()) {
+        throw new Error('target_database is required and cannot be null');
+      }
     }
 
-    if (!instance.target_table || !instance.target_table.trim()) {
-      throw new Error('target_table is required and cannot be null');
+    if (instance.target_table !== undefined) {
+      if (!instance.target_table || !instance.target_table.trim()) {
+        throw new Error('target_table is required and cannot be null');
+      }
     }
   }
 
   static validateMappings(instance: Migration) {
-    if (instance.mappings === null || instance.mappings === undefined) {
+    // If mappings is not provided (e.g. partial update), skip validation
+    if (instance.mappings === undefined) {
+      return;
+    }
+
+    if (instance.mappings === null) {
       throw new Error('mappings is required and cannot be null');
     }
   }

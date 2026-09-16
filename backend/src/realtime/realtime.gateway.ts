@@ -77,8 +77,7 @@ export class RealtimeGateway
     this.logger.log(`Client connected: ${client.id}`);
 
     const clientType =
-      client.handshake.auth?.clientType ||
-      client.handshake.query?.clientType;
+      client.handshake.auth?.clientType || client.handshake.query?.clientType;
 
     // Handle Frontend client connection
     if (clientType === 'frontend') {
@@ -486,6 +485,102 @@ export class RealtimeGateway
       status: 'acknowledged',
       type: commandType,
       receivedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Listen for agent notification that a migration has started execution
+   */
+  @SubscribeMessage('agent:migration:started')
+  async handleAgentMigrationStarted(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    payload: {
+      migrationId: string;
+      agentId?: string;
+      projectId?: string;
+      organizationId?: string;
+      status?: string;
+      timestamp?: string;
+    },
+  ) {
+    const { migrationId, agentId, projectId, organizationId } = payload || {};
+
+    this.logger.log(
+      `[Agent Event] Migration started execution: ID="${migrationId}" | Agent="${agentId}" | Project="${projectId}"`,
+    );
+
+    if (migrationId) {
+      // 1. Update database record to 'Running'
+      try {
+        await this.migrationModel.update(
+          { status: MigrationStatus.RUNNING } as any,
+          { where: { id: migrationId }, validate: false },
+        );
+        this.logger.log(
+          `[Database] Migration [${migrationId}] status updated to "${MigrationStatus.RUNNING}"`,
+        );
+      } catch (err: any) {
+        this.logger.error(
+          `[Database] Failed to update migration [${migrationId}] status: ${err.message}`,
+        );
+      }
+
+      // 2. Broadcast status change exclusively to the organization room
+      let targetOrgId = organizationId;
+      if (!targetOrgId) {
+        try {
+          const migrationRecord = await this.migrationModel.findByPk(
+            migrationId,
+            {
+              include: [
+                { model: Project, attributes: ['id', 'organizationId'] },
+              ],
+            },
+          );
+          targetOrgId =
+            migrationRecord?.project?.organizationId ||
+            (migrationRecord as any)?.organizationId;
+        } catch {}
+      }
+
+      const eventPayload = {
+        migrationId,
+        status: MigrationStatus.RUNNING,
+        agentId,
+        projectId,
+        organizationId: targetOrgId,
+        timestamp: new Date().toISOString(),
+      };
+
+      const commandEnvelope = {
+        type: 'MIGRATION_STATUS_CHANGED',
+        payload: eventPayload,
+        meta: {
+          timestamp: new Date().toISOString(),
+          organizationId: targetOrgId,
+          projectId,
+        },
+      };
+
+      if (targetOrgId) {
+        this.server
+          .to(`org:${targetOrgId}`)
+          .emit('backend:command', commandEnvelope);
+        this.logger.log(
+          `[Realtime] Emitted MIGRATION_STATUS_CHANGED (Running) exclusively to room "org:${targetOrgId}" for migration "${migrationId}"`,
+        );
+      } else {
+        this.logger.warn(
+          `[Realtime] Could not determine organizationId for migration "${migrationId}". Status update was not broadcast.`,
+        );
+      }
+    }
+
+    return {
+      status: 'acknowledged',
+      migrationId,
+      newStatus: MigrationStatus.RUNNING,
     };
   }
 

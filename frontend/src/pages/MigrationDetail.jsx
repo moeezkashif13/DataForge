@@ -23,11 +23,14 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
+import { useDispatch } from "react-redux";
 import {
+  migrationsApi,
   useGetMigrationByIdQuery,
   useDeleteMigrationMutation,
 } from "../store/api/migrationsApi";
 import { useData } from "../context/DataContext";
+import { useSocket } from "../context/SocketContext";
 import { Breadcrumbs } from "../components/ui/Breadcrumbs";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
@@ -36,10 +39,14 @@ import { useToast } from "../context/ToastContext";
 export default function MigrationDetail() {
   const { migrationId } = useParams();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { onCommand } = useSocket();
+
   const {
     data: migration,
     isLoading,
     isError,
+    refetch,
   } = useGetMigrationByIdQuery(migrationId);
   const [deleteMigration, { isLoading: isDeleting }] =
     useDeleteMigrationMutation();
@@ -67,6 +74,42 @@ export default function MigrationDetail() {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
   }, [logs, autoScroll]);
+
+  // Real-time status update listener for this migration (broadcast to org room)
+  useEffect(() => {
+    const handleStatusUpdate = (payload) => {
+      console.log(
+        "[MigrationDetail Page] Real-time status update received:",
+        payload,
+      );
+      if (payload?.migrationId === migrationId) {
+        const newStatus = payload?.status || "Running";
+        // Optimistically update RTK Query cache for getMigrationById
+        dispatch(
+          migrationsApi.util.updateQueryData(
+            "getMigrationById",
+            migrationId,
+            (draft) => {
+              if (draft) {
+                draft.status = newStatus;
+              }
+            },
+          ),
+        );
+        // Also refetch for fresh consistency
+        refetch();
+      }
+    };
+
+    const unsubscribe = onCommand(
+      "MIGRATION_STATUS_CHANGED",
+      handleStatusUpdate,
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [onCommand, migrationId, dispatch, refetch]);
 
   const formatNumber = (n) => new Intl.NumberFormat("en-US").format(n || 0);
 

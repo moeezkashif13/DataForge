@@ -1,4 +1,10 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -10,10 +16,16 @@ import type {
   MigrationJobData,
   MigrationJobResult,
 } from './background-jobs.types';
+import { AgentSocketService } from '../agent-socket/agent-socket.service';
 
 @Injectable()
 export class MigrationExecutionService {
   private readonly logger = new Logger(MigrationExecutionService.name);
+
+  constructor(
+    @Inject(forwardRef(() => AgentSocketService))
+    private readonly agentSocketService: AgentSocketService,
+  ) {}
 
   /**
    * Connect to PostgreSQL client database
@@ -216,7 +228,9 @@ export class MigrationExecutionService {
   ): Promise<MigrationJobResult> {
     const { id, data } = job;
     const migration = data.migration;
+
     const migrationId = migration?.id || 'unknown';
+    console.log(migrationId, 'lllllllllllll');
     const migrationName = migration?.name || `Migration #${id}`;
     const targetTable = migration?.target_table || 'customers';
     const targetDatabase = migration?.target_database || 'client_db';
@@ -234,6 +248,21 @@ export class MigrationExecutionService {
     this.logger.log(
       `[Migration Pipeline Started] Job #${id} ("${migrationName}") | Source: "${sourceFilePath}" (${fileSizeMb} MB) | Target: ${targetDatabase}.${targetTable} | Batch Size: ${batchSize}`,
     );
+
+    // Notify backend that migration execution has started (changes status from Ready to Running)
+    if (migrationId && migrationId !== 'unknown') {
+      this.agentSocketService.sendMessageToBackend('agent:migration:started', {
+        migrationId,
+        agentId: data.agentId,
+        projectId: data.projectId,
+        organizationId: data.organizationId,
+        status: 'Running',
+        timestamp: new Date().toISOString(),
+      });
+      this.logger.log(
+        `[Migration Started] Sent agent:migration:started to backend for migration "${migrationName}" (${migrationId})`,
+      );
+    }
 
     await job.updateProgress({
       percentage: 5,

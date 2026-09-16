@@ -6,7 +6,9 @@ import React, {
   useState,
   useCallback,
 } from 'react';
+import { useSelector } from 'react-redux';
 import { io } from 'socket.io-client';
+import { selectOrganizationId } from '../store/slices/authSlice';
 
 const SocketContext = createContext(null);
 
@@ -16,6 +18,14 @@ export function SocketProvider({ children }) {
   const [lastCommand, setLastCommand] = useState(null);
   const socketRef = useRef(null);
   const commandListenersRef = useRef(new Map());
+
+  // Current active organization ID from Redux store or localStorage
+  const reduxOrgId = useSelector(selectOrganizationId);
+  const activeOrgId =
+    reduxOrgId ||
+    (typeof window !== 'undefined'
+      ? localStorage.getItem('dataforge_org_id')
+      : null);
 
   useEffect(() => {
     const backendUrl =
@@ -82,6 +92,22 @@ export function SocketProvider({ children }) {
     };
   }, []);
 
+  // Automatically join and leave org:{organizationId} room when user is logged in
+  useEffect(() => {
+    if (!socketRef.current || !isConnected || !activeOrgId) return;
+
+    const orgRoom = `org:${activeOrgId}`;
+    console.log(`[Socket.IO] Joining organization room: "${orgRoom}"`);
+    socketRef.current.emit('join', { room: orgRoom });
+
+    return () => {
+      if (socketRef.current && socketRef.current.connected) {
+        console.log(`[Socket.IO] Leaving organization room: "${orgRoom}"`);
+        socketRef.current.emit('leave', { room: orgRoom });
+      }
+    };
+  }, [isConnected, activeOrgId]);
+
   /**
    * Send a command from Frontend to Backend
    * @param {string} type - Command name, e.g. 'START_MIGRATION', 'CANCEL_MIGRATION'
@@ -102,6 +128,7 @@ export function SocketProvider({ children }) {
         payload,
         meta: {
           timestamp: new Date().toISOString(),
+          organizationId: activeOrgId,
           ...meta,
         },
       };
@@ -110,7 +137,7 @@ export function SocketProvider({ children }) {
       console.log(`[Socket.IO] Sent frontend:command [${type}]:`, envelope);
       return true;
     },
-    [],
+    [activeOrgId],
   );
 
   /**
@@ -140,7 +167,7 @@ export function SocketProvider({ children }) {
   }, []);
 
   /**
-   * Join a room (e.g., "project:uuid", "org:uuid")
+   * Join a room manually (e.g. for custom rooms)
    */
   const joinRoom = useCallback((room) => {
     if (socketRef.current && socketRef.current.connected) {
@@ -150,7 +177,7 @@ export function SocketProvider({ children }) {
   }, []);
 
   /**
-   * Leave a room
+   * Leave a room manually
    */
   const leaveRoom = useCallback((room) => {
     if (socketRef.current && socketRef.current.connected) {
@@ -164,6 +191,7 @@ export function SocketProvider({ children }) {
     isConnected,
     socketId,
     lastCommand,
+    activeOrgId,
     sendCommand,
     onCommand,
     joinRoom,
