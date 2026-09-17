@@ -12,6 +12,7 @@ import { User } from '../../models/user.model';
 import { Organization } from '../../models/organization.model';
 import { OrganizationUser } from '../../models/organization-user.model';
 import { CreateMigrationDto } from './dto/create-migration.dto';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
 
 @Injectable()
 export class MigrationsService {
@@ -76,11 +77,30 @@ export class MigrationsService {
       agentId: 'agent-prod-01 (Dummy)',
       agentName: 'Production Agent US-East (Dummy)',
       status: data.status,
-      progress: 78.2,
-      recordsProcessed: 782400,
-      recordsTotal: 1000000,
-      recordsSucceeded: 780912,
-      recordsFailed: 1488,
+      progress: (() => {
+        const live = RealtimeGateway.liveProgressMap.get(data.id);
+        if (live?.progress !== undefined) return live.progress;
+        const s = String(data.status).toUpperCase();
+        if (s === MigrationStatus.COMPLETED.toUpperCase()) return 100;
+        if (s === MigrationStatus.READY.toUpperCase()) return 0;
+        return 0;
+      })(),
+      recordsProcessed: (() => {
+        const live = RealtimeGateway.liveProgressMap.get(data.id);
+        if (live?.rowsProcessed !== undefined) return live.rowsProcessed;
+        const s = String(data.status).toUpperCase();
+        if (s === MigrationStatus.COMPLETED.toUpperCase()) return 10000;
+        return 0;
+      })(),
+      recordsTotal: 10000,
+      recordsSucceeded: (() => {
+        const live = RealtimeGateway.liveProgressMap.get(data.id);
+        if (live?.rowsProcessed !== undefined) return live.rowsProcessed;
+        const s = String(data.status).toUpperCase();
+        if (s === MigrationStatus.COMPLETED.toUpperCase()) return 10000;
+        return 0;
+      })(),
+      recordsFailed: 0,
       throughput: 696,
       startedAt: '10:42 AM Today (Dummy)',
       elapsed: '18m 42s (Dummy)',

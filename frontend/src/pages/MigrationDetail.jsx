@@ -112,13 +112,46 @@ export default function MigrationDetail() {
       }
     };
 
-    const unsubscribe = onCommand(
+    const handleProgressUpdate = (payload) => {
+      if (payload?.migrationId === migrationId) {
+        const progress = payload?.progress ?? payload?.percentage;
+        if (progress !== undefined) {
+          dispatch(
+            migrationsApi.util.updateQueryData(
+              "getMigrationById",
+              migrationId,
+              (draft) => {
+                if (draft) {
+                  draft.progress = progress;
+                  if (payload?.rowsProcessed !== undefined) {
+                    draft.recordsProcessed = payload.rowsProcessed;
+                  }
+                  if (payload?.stage) {
+                    draft.stage = payload.stage;
+                  }
+                  if (payload?.message) {
+                    draft.message = payload.message;
+                  }
+                }
+              },
+            ),
+          );
+        }
+      }
+    };
+
+    const unsubStatus = onCommand(
       "MIGRATION_STATUS_CHANGED",
       handleStatusUpdate,
     );
+    const unsubProgress = onCommand(
+      "MIGRATION_PROGRESS_UPDATED",
+      handleProgressUpdate,
+    );
 
     return () => {
-      unsubscribe();
+      unsubStatus();
+      unsubProgress();
     };
   }, [onCommand, migrationId, dispatch, refetch]);
 

@@ -41,7 +41,7 @@ export default function Migrations() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMigForDelete, setSelectedMigForDelete] = useState(null);
 
-  // Real-time status update listener from backend
+  // Real-time status and progress update listeners from backend
   useEffect(() => {
     const handleStatusUpdate = (payload) => {
       console.log(
@@ -66,6 +66,9 @@ export default function Migrations() {
                   payload?.progress === 100
                 ) {
                   target.progress = 100;
+                  if (payload?.rowsInserted) {
+                    target.recordsProcessed = payload.rowsInserted;
+                  }
                 } else if (payload?.progress !== undefined) {
                   target.progress = payload.progress;
                 }
@@ -78,14 +81,42 @@ export default function Migrations() {
       refetch();
     };
 
-    // Listen to command envelope sent to org room
-    const unsubscribe = onCommand(
+    const handleProgressUpdate = (payload) => {
+      const migrationId = payload?.migrationId;
+      const progress = payload?.progress ?? payload?.percentage;
+
+      if (migrationId && progress !== undefined) {
+        dispatch(
+          migrationsApi.util.updateQueryData(
+            "getMigrations",
+            undefined,
+            (draft) => {
+              const target = draft.find((m) => m.id === migrationId);
+              if (target) {
+                target.progress = progress;
+                if (payload?.rowsProcessed !== undefined) {
+                  target.recordsProcessed = payload.rowsProcessed;
+                }
+              }
+            },
+          ),
+        );
+      }
+    };
+
+    // Listen to command envelopes sent to org room
+    const unsubStatus = onCommand(
       "MIGRATION_STATUS_CHANGED",
       handleStatusUpdate,
     );
+    const unsubProgress = onCommand(
+      "MIGRATION_PROGRESS_UPDATED",
+      handleProgressUpdate,
+    );
 
     return () => {
-      unsubscribe();
+      unsubStatus();
+      unsubProgress();
     };
   }, [onCommand, dispatch, refetch]);
 
@@ -292,7 +323,7 @@ export default function Migrations() {
                         </div>
                         <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all ${
+                            className={`h-full rounded-full transition-all duration-500 ease-in-out ${
                               String(m.status || "").toUpperCase() ===
                               "COMPLETED"
                                 ? "bg-teal-500"

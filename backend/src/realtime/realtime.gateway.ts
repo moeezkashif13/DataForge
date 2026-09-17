@@ -47,6 +47,12 @@ export class RealtimeGateway
   // Track connected execution agents: agentId -> Set of socket IDs
   private readonly connectedAgents = new Map<string, Set<string>>();
 
+  // In-memory live progress tracking: migrationId -> { progress: number; rowsProcessed?: number }
+  public static readonly liveProgressMap = new Map<
+    string,
+    { progress: number; rowsProcessed?: number }
+  >();
+
   constructor(
     @InjectModel(Agent)
     private readonly agentModel: typeof Agent,
@@ -544,12 +550,18 @@ export class RealtimeGateway
         } catch {}
       }
 
+      RealtimeGateway.liveProgressMap.set(migrationId, {
+        progress: 0,
+        rowsProcessed: 0,
+      });
+
       const eventPayload = {
         migrationId,
         status: MigrationStatus.RUNNING,
         agentId,
         projectId,
         organizationId: targetOrgId,
+        progress: 0,
         timestamp: new Date().toISOString(),
       };
 
@@ -582,6 +594,93 @@ export class RealtimeGateway
       migrationId,
       newStatus: MigrationStatus.RUNNING,
     };
+  }
+
+  @SubscribeMessage('agent:migration:progress')
+  async handleAgentMigrationProgress(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    payload: {
+      migrationId: string;
+      agentId?: string;
+      projectId?: string;
+      organizationId?: string;
+      percentage: number;
+      rowsProcessed?: number;
+      stage?: string;
+      message?: string;
+      timestamp?: string;
+    },
+  ) {
+    const {
+      migrationId,
+      agentId,
+      projectId,
+      organizationId,
+      percentage,
+      rowsProcessed,
+      stage,
+      message,
+    } = payload || {};
+
+    if (!migrationId) {
+      return { status: 'error', message: 'migrationId is required' };
+    }
+
+    let targetOrgId = organizationId;
+    if (!targetOrgId) {
+      try {
+        const migrationRecord = await this.migrationModel.findByPk(
+          migrationId,
+          {
+            include: [
+              { model: Project, attributes: ['id', 'organizationId'] },
+            ],
+          },
+        );
+        targetOrgId =
+          migrationRecord?.project?.organizationId ||
+          (migrationRecord as any)?.organizationId;
+      } catch {}
+    }
+
+    // Update in-memory tracking
+    RealtimeGateway.liveProgressMap.set(migrationId, {
+      progress: percentage,
+      rowsProcessed,
+    });
+
+    const commandEnvelope = {
+      type: 'MIGRATION_PROGRESS_UPDATED',
+      payload: {
+        migrationId,
+        progress: percentage,
+        percentage,
+        rowsProcessed,
+        stage,
+        message,
+        agentId,
+        projectId,
+        organizationId: targetOrgId,
+        timestamp: new Date().toISOString(),
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        organizationId: targetOrgId,
+        projectId,
+      },
+    };
+
+    if (targetOrgId) {
+      this.server
+        .to(`org:${targetOrgId}`)
+        .emit('backend:command', commandEnvelope);
+      this.logger.log(
+        `[Realtime] Emitted MIGRATION_PROGRESS_UPDATED (${percentage}%) exclusively to room "org:${targetOrgId}" for migration "${migrationId}"`,
+      );
+    }
+
+    return { status: 'acknowledged', migrationId, percentage };
   }
 
   @SubscribeMessage('agent:migration:completed')
@@ -620,6 +719,12 @@ export class RealtimeGateway
           `[Database] Failed to update migration [${migrationId}] status to Completed: ${err.message}`,
         );
       }
+
+      // Update in-memory tracking
+      RealtimeGateway.liveProgressMap.set(migrationId, {
+        progress: 100,
+        rowsProcessed: payload?.rowsInserted,
+      });
 
       // 2. Broadcast status change exclusively to the organization room
       let targetOrgId = organizationId;

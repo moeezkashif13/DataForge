@@ -436,6 +436,41 @@ export class MigrationExecutionService {
       `[Migration Pipeline Started] Job #${id} ("${migrationName}") | Source: "${sourceFilePath}" (${fileSizeMb} MB) | Target: ${targetDatabase}.${targetTable} | Batch Size: ${batchSize}`,
     );
 
+    // Helper to report progress to BullMQ worker and backend WebSockets
+    const reportProgress = async (
+      percentage: number,
+      stage: string,
+      message: string,
+      rowsProcessed = 0,
+    ) => {
+      await job.updateProgress({
+        percentage,
+        rowsProcessed,
+        stage,
+        message,
+      });
+
+      if (migrationId && migrationId !== 'unknown') {
+        this.agentSocketService.sendMessageToBackend(
+          'agent:migration:progress',
+          {
+            migrationId,
+            agentId: data.agentId,
+            projectId: data.projectId,
+            organizationId: data.organizationId,
+            percentage,
+            rowsProcessed,
+            stage,
+            message,
+            timestamp: new Date().toISOString(),
+          },
+        );
+        this.logger.log(
+          `[Progress Update] Sent ${percentage}% (${stage}) to backend for migration "${migrationName}" (${migrationId})`,
+        );
+      }
+    };
+
     // Notify backend that migration execution has started (changes status from Ready to Running)
     if (migrationId && migrationId !== 'unknown') {
       this.agentSocketService.sendMessageToBackend('agent:migration:started', {
@@ -451,12 +486,32 @@ export class MigrationExecutionService {
       );
     }
 
-    await job.updateProgress({
-      percentage: 5,
-      rowsProcessed: 0,
-      stage: 'INITIALIZING',
-      message: `Connecting to ${targetDatabase} and verifying table "${targetTable}"...`,
-    });
+    // Delay 5s and send 20% progress update
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await reportProgress(
+      20,
+      'EXTRACTING',
+      `Parsing source CSV file "${path.basename(sourceFilePath)}"...`,
+      0,
+    );
+
+    // Delay 5s and send 40% progress update
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await reportProgress(
+      40,
+      'VALIDATING',
+      'Validating field mappings and preparing batch streams...',
+      0,
+    );
+
+    // Delay 5s and send 60% progress update
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await reportProgress(
+      60,
+      'CONNECTING',
+      `Connecting to target database "${targetDatabase}" and verifying table "${targetTable}"...`,
+      0,
+    );
 
     let originalPriority: number | null = null;
     try {
@@ -533,15 +588,6 @@ export class MigrationExecutionService {
           this.logger.log(
             `[Job #${id}] Inserted Batch #${batchCount} (${insertedCount} rows) into ${targetTable} | Total: ${totalInserted} | Elapsed: ${elapsedSec}s | Rate: ~${currentRate} rows/s`,
           );
-
-          await job.updateProgress({
-            percentage: limit
-              ? Math.min(99, Math.round((totalInserted / limit) * 100))
-              : 50,
-            rowsProcessed: totalInserted,
-            stage: 'MIGRATING',
-            message: `Batch #${batchCount}: Inserted ${insertedCount} rows (Total: ${totalInserted.toLocaleString()})`,
-          });
         }
 
         if (limit && recordCount >= limit) {
@@ -568,16 +614,35 @@ export class MigrationExecutionService {
         );
       }
 
+      // Send 80% progress update and delay 5s
+      await reportProgress(
+        80,
+        'INSERTED',
+        `Inserted ${totalInserted.toLocaleString()} rows into ${targetTable}. Verifying data integrity...`,
+        totalInserted,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+
+      // Send 95% progress update and delay 5s
+      await reportProgress(
+        95,
+        'FINALIZING',
+        'Finalizing database transactions and checking consistency...',
+        totalInserted,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+
       const totalDurationSec = ((performance.now() - startTime) / 1000).toFixed(
         2,
       );
 
-      await job.updateProgress({
-        percentage: 100,
-        rowsProcessed: totalInserted,
-        stage: 'COMPLETED',
-        message: `Migration completed: ${totalInserted.toLocaleString()} rows migrated into ${targetTable}.`,
-      });
+      // Send 100% progress update
+      await reportProgress(
+        100,
+        'COMPLETED',
+        `Migration completed: ${totalInserted.toLocaleString()} rows migrated into ${targetTable}.`,
+        totalInserted,
+      );
 
       this.logger.log(
         `[Migration Completed] Job #${id} finished: ${totalInserted.toLocaleString()} rows inserted in ${totalDurationSec}s`,
