@@ -22,6 +22,8 @@ export class MigrationsController {
   async getMigrations(
     @CurrentUser() user: { id: string } | null,
     @Query('projectId') projectId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
     if (!user?.id) {
       throw new UnauthorizedException(
@@ -30,14 +32,20 @@ export class MigrationsController {
     }
 
     try {
-      const migrations = await this.migrationsService.getMigrationsForUser(
+      const pageNum = page ? parseInt(page, 10) : 1;
+      const limitNum = limit ? parseInt(limit, 10) : 20;
+
+      const result = await this.migrationsService.getMigrationsForUser(
         user.id,
         projectId,
+        pageNum,
+        limitNum,
       );
 
       return {
         statusCode: HttpStatus.OK,
-        migrations,
+        migrations: result.migrations,
+        pagination: result.pagination,
       };
     } catch (error: any) {
       throw new HttpException(

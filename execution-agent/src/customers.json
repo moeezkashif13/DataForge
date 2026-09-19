@@ -1,0 +1,72 @@
+[
+  {
+    "index": 1,
+    "customer_id": "EB54EF1154C3A78",
+    "first_name": "Heather",
+    "last_name": "Callahan",
+    "company": "Mosley-David",
+    "city": "Lake Jeffborough",
+    "country": "Norway",
+    "phone_1": "043-797-5229",
+    "phone_2": "915.112.1727",
+    "email": "urangel@espinoza-francis.net",
+    "subscription_date": "2020-08-26",
+    "website": "http://www.escobar.org/"
+  },
+  {
+    "index": 2,
+    "customer_id": "10dAcafEBbA5FcA",
+    "first_name": "Kristina",
+    "last_name": "Ferrell",
+    "company": "Horn, Shepard and Watson",
+    "city": "Aaronville",
+    "country": "Andorra",
+    "phone_1": "932-062-1802",
+    "phone_2": "(209)172-7124x3651",
+    "email": "xreese@hall-donovan.com",
+    "subscription_date": "2020-04-27",
+    "website": "https://tyler-pugh.info/"
+  },
+  {
+    "index": 3,
+    "customer_id": "67DAB15Ebe4BE4a",
+    "first_name": "Briana",
+    "last_name": "Andersen",
+    "company": "Irwin-Oneal",
+    "city": "East Jordan",
+    "country": "Nepal",
+    "phone_1": "8352752061",
+    "phone_2": "(567)135-1918",
+    "email": "haleybraun@blevins-sexton.com",
+    "subscription_date": "2022-03-22",
+    "website": "https://www.mack-bell.net/"
+  },
+  {
+    "index": 4,
+    "customer_id": "6d350C5E5eDB4EE",
+    "first_name": "Patty",
+    "last_name": "Ponce",
+    "company": "Richardson Group",
+    "city": "East Kristintown",
+    "country": "Northern Mariana Islands",
+    "phone_1": "302.398.3833",
+    "phone_2": "196-189-7767x770",
+    "email": "hohailey@anthony.com",
+    "subscription_date": "2020-07-02",
+    "website": "https://delacruz-freeman.org/"
+  },
+  {
+    "index": 5,
+    "customer_id": "5820deAdCF23EFe",
+    "first_name": "Kathleen",
+    "last_name": "Mccormick",
+    "company": "Carson-Burch",
+    "city": "Andresmouth",
+    "country": "Macao",
+    "phone_1": "001-184-153-9683x1497",
+    "phone_2": "552.051.2979x342",
+    "email": "alvaradojesse@rangel-shields.com",
+    "subscription_date": "2021-01-17",
+    "website": "https://welch.info/"
+  }
+]

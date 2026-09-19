@@ -3,6 +3,7 @@ import { betterAuth } from 'better-auth';
 import { bearer } from 'better-auth/plugins';
 import { Pool } from 'pg';
 import { randomUUID } from 'crypto';
+import { databaseConfig } from '../config/database.config';
 
 export const AUTH_BASE_PATH = '/api/auth';
 
@@ -41,11 +42,14 @@ export const auth = betterAuth({
   plugins: [bearer()],
 
   database: new Pool({
-    host: process.env.DB_HOST || 'localhost',
-    port: Number(process.env.DB_PORT) || 5432,
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'root',
-    database: process.env.DB_NAME || 'dataforge',
+    host: databaseConfig.host,
+    port: databaseConfig.port,
+    user: databaseConfig.username,
+    password: databaseConfig.password,
+    database: databaseConfig.database,
+    max: databaseConfig.betterAuthPool.max,
+    idleTimeoutMillis: databaseConfig.betterAuthPool.idleTimeoutMillis,
+    connectionTimeoutMillis: databaseConfig.betterAuthPool.connectionTimeoutMillis,
   }),
 
   user: {
@@ -71,6 +75,10 @@ export const auth = betterAuth({
     database: {
       generateId: () => randomUUID(),
     },
+  },
+
+  rateLimit: {
+    enabled: false,
   },
 
   session: {

@@ -14,6 +14,12 @@ import { User } from './user.model';
 @Table({
   tableName: 'organization_users',
   timestamps: true,
+  indexes: [
+    {
+      name: 'idx_organization_users_user_role',
+      fields: ['userId', 'role'],
+    },
+  ],
 })
 export class OrganizationUser extends Model<OrganizationUser> {
   @ForeignKey(() => Organization)

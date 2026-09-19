@@ -9,6 +9,8 @@ import { MigrationsModule } from './migrations/migrations.module';
 import { ExecutionAgentModule } from './execution-agent/execution-agent.module';
 import { RealtimeModule } from './realtime/realtime.module';
 
+import { databaseConfig } from './config/database.config';
+
 @Module({
   imports: [
     ThrottlerModule.forRoot([
@@ -19,14 +21,17 @@ import { RealtimeModule } from './realtime/realtime.module';
     ]),
     SequelizeModule.forRoot({
       dialect: 'postgres',
-      host: process.env.DB_HOST || 'localhost',
-      port: Number(process.env.DB_PORT) || 5432,
-      username: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD || 'root',
-      database: process.env.DB_NAME || 'dataforge',
+      host: databaseConfig.host,
+      port: databaseConfig.port,
+      username: databaseConfig.username,
+      password: databaseConfig.password,
+      database: databaseConfig.database,
 
       autoLoadModels: true,
+      logging: false,
       synchronize: false,
+
+      pool: databaseConfig.sequelizePool,
     }),
 
     AuthModule,

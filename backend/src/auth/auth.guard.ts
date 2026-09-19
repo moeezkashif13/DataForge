@@ -9,6 +9,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from './auth';
+import { getCachedSession, setCachedSession } from './session-cache';
 
 export const IS_PUBLIC_KEY = 'isPublic';
 export const AllowAnonymous = () => SetMetadata(IS_PUBLIC_KEY, true);
@@ -43,12 +44,24 @@ export class BetterAuthGuard implements CanActivate {
     if (isPublic) return true;
 
     const request = context.switchToHttp().getRequest();
-    const session = await auth.api.getSession({
-      headers: fromNodeHeaders(request.headers),
-    });
+    const authHeader = request.headers['authorization'] || '';
+    const cookieHeader = request.headers['cookie'] || '';
+    const cacheKey = authHeader || cookieHeader;
+
+    let session: AuthSession = cacheKey ? getCachedSession(cacheKey) : null;
 
     if (!session) {
-      throw new UnauthorizedException('Please login to perform this action');
+      session = await auth.api.getSession({
+        headers: fromNodeHeaders(request.headers),
+      });
+
+      if (!session) {
+        throw new UnauthorizedException('Please login to perform this action');
+      }
+
+      if (cacheKey) {
+        setCachedSession(cacheKey, session);
+      }
     }
 
     request.session = session;

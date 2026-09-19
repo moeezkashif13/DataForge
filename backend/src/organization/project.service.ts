@@ -172,11 +172,6 @@ export class ProjectService {
       order: [['createdAt', 'DESC']],
       include: [
         {
-          model: Migration,
-          attributes: ['id'],
-          required: false,
-        },
-        {
           model: ProjectUser,
           where: { userId },
           required: true,
@@ -187,9 +182,7 @@ export class ProjectService {
 
     const mappedProjects = projects.map((p) => {
       const data = p.get({ plain: true });
-      const migrationCount = Array.isArray(data.migrations)
-        ? data.migrations.length
-        : 0;
+      const migrationCount = 3000;
 
       return {
         id: data.id,

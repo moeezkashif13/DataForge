@@ -36,6 +36,12 @@ export enum MigrationTargetType {
 @Table({
   tableName: 'migrations',
   timestamps: true,
+  indexes: [
+    {
+      name: 'idx_migrations_project_created',
+      fields: ['project_id', { name: 'createdAt', order: 'DESC' }],
+    },
+  ],
   validate: {
     dynamicValidation(this: Migration) {
       Migration.validateSourceFields(this);
