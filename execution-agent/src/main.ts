@@ -12,12 +12,18 @@ async function bootstrap() {
   logger.log(
     `Execution Agent has successfully started on http://localhost:${port}`,
   );
+  logger.log(
+    `BullBoard visual dashboard is running at http://localhost:${port}/admin/queues`,
+  );
+  logger.log(
+    `OpenAPI standard spec available at http://localhost:${port}/api-docs-json (import into Postman/Insomnia)`,
+  );
 
-  const agentSocketService = app.get(AgentSocketService);
-  try {
-    await agentSocketService.connectToBackend();
-  } catch (err: any) {
-    logger.error(`Initial auto-connection to backend failed: ${err.message}`);
-  }
+  // const agentSocketService = app.get(AgentSocketService);
+  // try {
+  //   await agentSocketService.connectToBackend();
+  // } catch (err: any) {
+  //   logger.error(`Initial auto-connection to backend failed: ${err.message}`);
+  // }
 }
 void bootstrap();

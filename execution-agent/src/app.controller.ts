@@ -40,8 +40,26 @@ export class AppController {
     };
   }
 
+  @Get('api-docs-json')
+  getOpenApiSpec() {
+    const fs = require('fs');
+    const path = require('path');
+    const candidates = [
+      path.resolve(process.cwd(), 'openapi.json'),
+      path.resolve(__dirname, '../openapi.json'),
+      path.resolve(__dirname, '../../openapi.json'),
+    ];
+    for (const p of candidates) {
+      if (fs.existsSync(p)) {
+        return JSON.parse(fs.readFileSync(p, 'utf8'));
+      }
+    }
+    return { error: 'OpenAPI specification not found' };
+  }
+
   @Get()
   getHello(): string {
     return this.appService.getHello();
   }
 }
+
