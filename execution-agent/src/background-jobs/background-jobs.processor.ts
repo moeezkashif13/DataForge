@@ -3,6 +3,7 @@ import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { MIGRATION_QUEUE } from './background-jobs.types';
 import { MigrationExecutionService } from './migration-execution.service';
+import { MetricsService } from '../metrics/metrics.service';
 import type {
   MigrationJobData,
   MigrationJobResult,
@@ -14,6 +15,7 @@ export class BackgroundJobsProcessor extends WorkerHost {
 
   constructor(
     private readonly migrationExecutionService: MigrationExecutionService,
+    private readonly metricsService: MetricsService,
   ) {
     super();
   }
@@ -53,6 +55,7 @@ export class BackgroundJobsProcessor extends WorkerHost {
   @OnWorkerEvent('active')
   onActive(job: Job) {
     this.logger.log(`[BullMQ Worker Event] Job #${job.id} is now ACTIVE`);
+    this.metricsService.recordJobActive(MIGRATION_QUEUE, 'migration', job.timestamp);
   }
 
   @OnWorkerEvent('completed')
@@ -60,6 +63,13 @@ export class BackgroundJobsProcessor extends WorkerHost {
     this.logger.log(
       `[BullMQ Worker Event] Job #${job.id} COMPLETED: ${JSON.stringify(result)}`,
     );
+    const durationMs = Date.now() - (job.processedOn || job.timestamp || Date.now());
+    this.metricsService.recordJobCompleted(MIGRATION_QUEUE, 'migration', durationMs);
+    if (result?.rowsInserted) {
+      const elapsed = parseFloat(result.elapsedSeconds || '1') || 1;
+      const throughput = Math.round(result.rowsInserted / elapsed);
+      this.metricsService.recordMigrationRows(result.rowsInserted, throughput);
+    }
   }
 
   @OnWorkerEvent('failed')
@@ -67,6 +77,20 @@ export class BackgroundJobsProcessor extends WorkerHost {
     this.logger.error(
       `[BullMQ Worker Event] Job #${job.id} FAILED with error: ${error.message}`,
     );
+    this.metricsService.recordJobFailed(
+      MIGRATION_QUEUE,
+      'migration',
+      error.name || 'MigrationError',
+    );
+    if (job.attemptsMade > 0) {
+      this.metricsService.recordJobRetried(MIGRATION_QUEUE);
+    }
+  }
+
+  @OnWorkerEvent('stalled')
+  onStalled(jobId: string) {
+    this.logger.warn(`[BullMQ Worker Event] Migration Job #${jobId} STALLED`);
+    this.metricsService.recordJobStalled(MIGRATION_QUEUE);
   }
 
   @OnWorkerEvent('progress')
@@ -74,5 +98,14 @@ export class BackgroundJobsProcessor extends WorkerHost {
     this.logger.debug(
       `[BullMQ Worker Event] Job #${job.id} Progress: ${JSON.stringify(progress)}`,
     );
+    if (progress?.rowsProcessed) {
+      this.metricsService.recordMigrationRows(0, progress.throughput_rows_per_second);
+    }
+  }
+
+  @OnWorkerEvent('error')
+  onError(error: Error) {
+    this.logger.error(`[BullMQ Worker Event] Worker error: ${error.message}`, error.stack);
+    this.metricsService.recordWorkerError(MIGRATION_QUEUE);
   }
 }

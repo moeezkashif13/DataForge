@@ -6,6 +6,7 @@ import {
   MigrationJobData,
   MigrationJobResult,
 } from './background-jobs.types';
+import { MetricsService } from '../metrics/metrics.service';
 
 @Injectable()
 export class BackgroundJobsService {
@@ -14,6 +15,7 @@ export class BackgroundJobsService {
   constructor(
     @InjectQueue(MIGRATION_QUEUE)
     private readonly migrationQueue: Queue,
+    private readonly metricsService: MetricsService,
   ) {}
 
   /**
@@ -42,6 +44,7 @@ export class BackgroundJobsService {
     };
 
     const job = await this.migrationQueue.add(jobName, data, defaultOptions);
+    this.metricsService.recordJobAdded(MIGRATION_QUEUE, 'migration');
     this.logger.log(
       `[BullMQ] Enqueued migration job: "${job.name}" (ID: ${job.id})`,
     );

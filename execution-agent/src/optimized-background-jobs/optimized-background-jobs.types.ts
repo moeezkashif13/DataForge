@@ -48,5 +48,6 @@ export interface OptimizedQueueMetrics {
   failed: number;
   delayed: number;
   paused: boolean;
+  workersCount?: number;
   timestamp: string;
 }

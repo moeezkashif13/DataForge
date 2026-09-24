@@ -1,0 +1,990 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "DataForge Execution Agent - Background Jobs API",
+    "version": "1.0.0",
+    "description": "OpenAPI specification containing complete request and response payloads for DataForge background jobs, BullMQ playground testing routes, and queue management endpoints."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3500",
+      "description": "Local Execution Agent server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Playground Jobs",
+      "description": "Endpoints for testing BullMQ features and visualizing job execution in BullBoard (/admin/queues)"
+    },
+    {
+      "name": "Queue Controls",
+      "description": "Operational controls for pausing, resuming, cleaning, and monitoring queues"
+    },
+    {
+      "name": "Migration Jobs",
+      "description": "Production database migration jobs processed by background-jobs module"
+    },
+    {
+      "name": "System & Diagnostics",
+      "description": "Agent connection, health, and status routes"
+    }
+  ],
+  "paths": {
+    "/optimized-jobs/sample/progress": {
+      "post": {
+        "tags": ["Playground Jobs"],
+        "summary": "Trigger a multi-step progress job",
+        "description": "Enqueues a job that simulates incremental task processing with progress percentage updates (0-100%) and step logs. Watch it animate live in BullBoard.",
+        "operationId": "triggerProgressSample",
+        "requestBody": {
+          "required": false,
+          "description": "Configuration for the progress simulation",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgressSampleRequest"
+              },
+              "examples": {
+                "defaultProgress": {
+                  "summary": "Standard 5-step progress task",
+                  "value": {
+                    "title": "Image Resizing and Compression Pipeline",
+                    "steps": 5,
+                    "stepDelayMs": 1000
+                  }
+                },
+                "fastProgress": {
+                  "summary": "Quick 10-step progress task",
+                  "value": {
+                    "title": "Batch Geocoding Coordinates",
+                    "steps": 10,
+                    "stepDelayMs": 400
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Job successfully enqueued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobEnqueuedResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Multi-step progress job enqueued. Watch it update live in BullBoard at /admin/queues",
+                  "jobId": "14",
+                  "name": "progress-k9z2f1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/optimized-jobs/sample/failing": {
+      "post": {
+        "tags": ["Playground Jobs"],
+        "summary": "Trigger a simulated failing job",
+        "description": "Enqueues a job that fails and lands directly in the 'Failed' tab in BullBoard so you can inspect error reasons, stack traces, and test the manual Retry button.",
+        "operationId": "triggerFailingSample",
+        "requestBody": {
+          "required": false,
+          "description": "Configuration for failure simulation",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FailingSampleRequest"
+              },
+              "examples": {
+                "defaultFailed": {
+                  "summary": "Permanently fail to test 'Failed' tab & manual Retry in BullBoard",
+                  "value": {
+                    "title": "Payment Gateway Timeout Error",
+                    "errorMessage": "HTTP 504 Gateway Timeout: payment-service.internal:443"
+                  }
+                },
+                "failWithRetries": {
+                  "summary": "Fail after 3 retries (shows retry attempts before landing in Failed tab)",
+                  "value": {
+                    "title": "Flaky Remote Sync",
+                    "attempts": 3,
+                    "errorMessage": "Connection reset by peer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Failing job successfully enqueued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobEnqueuedResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Failing job enqueued. Inspect errors and retry attempts in BullBoard at /admin/queues",
+                  "jobId": "15",
+                  "name": "failing-k9z2h4"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/optimized-jobs/sample/delayed": {
+      "post": {
+        "tags": ["Playground Jobs"],
+        "summary": "Trigger a delayed background job",
+        "description": "Enqueues a job scheduled to execute after a specified delay. Visible in the 'Delayed' tab in BullBoard with a live countdown timer.",
+        "operationId": "triggerDelayedSample",
+        "requestBody": {
+          "required": false,
+          "description": "Delay duration parameters",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DelayedSampleRequest"
+              },
+              "examples": {
+                "tenSeconds": {
+                  "summary": "10-second delay",
+                  "value": {
+                    "title": "Scheduled User Welcome Email",
+                    "delayMs": 10000
+                  }
+                },
+                "thirtySeconds": {
+                  "summary": "30-second delay",
+                  "value": {
+                    "title": "Nightly Database Cleanup Check",
+                    "delayMs": 30000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Delayed job successfully enqueued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DelayedJobEnqueuedResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Delayed job enqueued for execution in 10 seconds. Check 'Delayed' tab in BullBoard.",
+                  "jobId": "16",
+                  "name": "delayed-k9z2k8",
+                  "delayMs": 10000
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/optimized-jobs/sample/bulk": {
+      "post": {
+        "tags": ["Playground Jobs"],
+        "summary": "Trigger bulk playground jobs",
+        "description": "Enqueues multiple jobs simultaneously to test BullMQ worker concurrency and batch throughput.",
+        "operationId": "triggerBulkSample",
+        "requestBody": {
+          "required": false,
+          "description": "Number of jobs to enqueue in bulk",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkSampleRequest"
+              },
+              "examples": {
+                "fiveJobs": {
+                  "summary": "Batch of 5 jobs",
+                  "value": {
+                    "count": 5
+                  }
+                },
+                "tenJobs": {
+                  "summary": "Batch of 10 jobs",
+                  "value": {
+                    "count": 10
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Bulk jobs enqueued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkEnqueuedResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Bulk enqueued 5 sample jobs",
+                  "jobIds": ["17", "18", "19", "20", "21"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/optimized-jobs/create": {
+      "post": {
+        "tags": ["Playground Jobs"],
+        "summary": "Create a customized playground job",
+        "description": "Create any custom job with arbitrary payload, execution type, priority, delay, or backoff configuration.",
+        "operationId": "createCustomPlaygroundJob",
+        "requestBody": {
+          "required": true,
+          "description": "Playground job specification and optional BullMQ options",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomJobCreateRequest"
+              },
+              "examples": {
+                "heavyComputeJob": {
+                  "summary": "Simulated CPU-intensive task",
+                  "value": {
+                    "title": "Prime Factorization & Hashing Benchmark",
+                    "type": "heavy-compute",
+                    "steps": 4,
+                    "payload": {
+                      "datasetId": "ds-994",
+                      "difficulty": "high"
+                    },
+                    "options": {
+                      "priority": 1,
+                      "attempts": 3
+                    }
+                  }
+                },
+                "customPayloadJob": {
+                  "summary": "Custom task with arbitrary payload",
+                  "value": {
+                    "title": "Send Analytics Webhook",
+                    "type": "custom",
+                    "durationMs": 800,
+                    "payload": {
+                      "event": "user.signup",
+                      "userId": "usr_99812",
+                      "plan": "enterprise"
+                    },
+                    "options": {
+                      "delay": 2000,
+                      "removeOnComplete": 100
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Custom job enqueued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobEnqueuedResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Playground test job enqueued in BullMQ",
+                  "jobId": "22",
+                  "name": "heavy-compute-k9z3m1",
+                  "queue": "optimized-jobs",
+                  "type": "heavy-compute"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/optimized-jobs/metrics": {
+      "get": {
+        "tags": ["Queue Controls"],
+        "summary": "Get playground queue metrics",
+        "description": "Retrieves real-time counts for active, waiting, completed, failed, delayed jobs and pause status in the playground queue.",
+        "operationId": "getOptimizedQueueMetrics",
+        "responses": {
+          "200": {
+            "description": "Current metrics snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueMetricsResponse"
+                },
+                "example": {
+                  "queueName": "optimized-jobs",
+                  "waiting": 3,
+                  "active": 1,
+                  "completed": 28,
+                  "failed": 2,
+                  "delayed": 1,
+                  "paused": false,
+                  "timestamp": "2026-09-21T21:55:00.000Z"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/optimized-jobs/{jobId}": {
+      "get": {
+        "tags": ["Playground Jobs"],
+        "summary": "Get job status and logs",
+        "description": "Inspects state (active/completed/failed/delayed/waiting), live progress percentage, return value, error reasons, and worker log messages.",
+        "operationId": "getPlaygroundJobStatus",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "description": "ID of the BullMQ job to inspect",
+            "schema": {
+              "type": "string"
+            },
+            "example": "14"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job details and status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatusResponse"
+                },
+                "example": {
+                  "success": true,
+                  "jobId": "14",
+                  "name": "progress-k9z2f1",
+                  "state": "completed",
+                  "progress": {
+                    "percentage": 100,
+                    "currentStep": 5,
+                    "totalSteps": 5,
+                    "status": "Finished"
+                  },
+                  "logs": [
+                    "Started job #14 [type: progress] at 2026-09-21T21:50:00.000Z",
+                    "Step 1/5 completed (20%). Step delay: 1000ms",
+                    "Step 2/5 completed (40%). Step delay: 1000ms",
+                    "Step 3/5 completed (60%). Step delay: 1000ms",
+                    "Step 4/5 completed (80%). Step delay: 1000ms",
+                    "Step 5/5 completed (100%). Step delay: 1000ms",
+                    "Completed job #14 in 5021ms"
+                  ],
+                  "failedReason": null,
+                  "returnvalue": {
+                    "success": true,
+                    "jobId": "14",
+                    "jobType": "progress",
+                    "durationMs": 5021
+                  },
+                  "attemptsMade": 1,
+                  "timestamp": 1790027400000,
+                  "processedOn": 1790027400100,
+                  "finishedOn": 1790027405121
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Queue Controls"],
+        "summary": "Remove a job",
+        "description": "Deletes a job from the queue.",
+        "operationId": "removePlaygroundJob",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "description": "ID of the job to remove",
+            "schema": {
+              "type": "string"
+            },
+            "example": "16"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job removed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericOperationResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Job #16 removed successfully"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Job not found"
+          }
+        }
+      }
+    },
+    "/optimized-jobs/{jobId}/retry": {
+      "post": {
+        "tags": ["Queue Controls"],
+        "summary": "Retry a failed job",
+        "description": "Re-queues a failed job for execution.",
+        "operationId": "retryPlaygroundJob",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "description": "ID of the failed job to retry",
+            "schema": {
+              "type": "string"
+            },
+            "example": "15"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job retried successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericOperationResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Job #15 retried successfully"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Job not found"
+          }
+        }
+      }
+    },
+    "/optimized-jobs/queue/pause": {
+      "post": {
+        "tags": ["Queue Controls"],
+        "summary": "Pause playground queue",
+        "description": "Suspends execution of incoming and waiting jobs in the playground queue.",
+        "operationId": "pausePlaygroundQueue",
+        "responses": {
+          "200": {
+            "description": "Queue paused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericOperationResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Queue paused successfully"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/optimized-jobs/queue/resume": {
+      "post": {
+        "tags": ["Queue Controls"],
+        "summary": "Resume playground queue",
+        "description": "Resumes execution of paused jobs.",
+        "operationId": "resumePlaygroundQueue",
+        "responses": {
+          "200": {
+            "description": "Queue resumed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericOperationResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Queue resumed successfully"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/optimized-jobs/queue/clean": {
+      "post": {
+        "tags": ["Queue Controls"],
+        "summary": "Clean jobs from queue",
+        "description": "Purges jobs by status (completed, failed, delayed, wait) older than grace period.",
+        "operationId": "cleanPlaygroundQueue",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "Category of jobs to clean",
+            "schema": {
+              "type": "string",
+              "enum": ["completed", "failed", "wait", "active", "delayed"],
+              "default": "completed"
+            },
+            "example": "completed"
+          },
+          {
+            "name": "grace",
+            "in": "query",
+            "required": false,
+            "description": "Grace period in milliseconds (0 means clean all jobs in category)",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "example": 0
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of jobs to purge",
+            "schema": {
+              "type": "integer",
+              "default": 1000
+            },
+            "example": 1000
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Queue cleaned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanQueueResponse"
+                },
+                "example": {
+                  "success": true,
+                  "cleanedCount": 12
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/trigger": {
+      "post": {
+        "tags": ["Migration Jobs"],
+        "summary": "Trigger a production database migration job",
+        "description": "Enqueues a production database migration job in the migration-queue handled by BackgroundJobsModule.",
+        "operationId": "triggerMigrationJob",
+        "requestBody": {
+          "required": true,
+          "description": "Migration job configuration and dataset metadata",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MigrationJobTriggerRequest"
+              },
+              "examples": {
+                "csvToPostgres": {
+                  "summary": "CSV to PostgreSQL Customers Ingestion",
+                  "value": {
+                    "agentId": "agent-01",
+                    "organizationId": "org-default",
+                    "projectId": "proj-ecommerce",
+                    "migration": {
+                      "id": "mig-cust-001",
+                      "name": "Customer Accounts CSV Ingestion",
+                      "source_type": "csv",
+                      "source_file_path": "customers.csv",
+                      "target_type": "postgresql",
+                      "target_database": "client_db",
+                      "target_table": "customers"
+                    },
+                    "metadata": {
+                      "batchSize": 1000,
+                      "ecoMode": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Migration job successfully enqueued",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "message": "Migration job queued in BullMQ",
+                  "jobId": "1",
+                  "name": "migration-mig-cust-001"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/metrics": {
+      "get": {
+        "tags": ["Migration Jobs"],
+        "summary": "Get migration-queue metrics",
+        "description": "Returns waiting, active, completed, and failed counts for the production migration-queue.",
+        "operationId": "getMigrationQueueMetrics",
+        "responses": {
+          "200": {
+            "description": "Migration queue metrics",
+            "content": {
+              "application/json": {
+                "example": {
+                  "waiting": 0,
+                  "active": 1,
+                  "completed": 5,
+                  "failed": 0,
+                  "delayed": 0,
+                  "paused": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/status": {
+      "get": {
+        "tags": ["System & Diagnostics"],
+        "summary": "Get agent connection status",
+        "description": "Retrieves the connection status of the execution agent with the central DataForge backend WebSocket.",
+        "operationId": "getAgentStatus",
+        "responses": {
+          "200": {
+            "description": "Current status"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ProgressSampleRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Human-readable label shown in BullBoard",
+            "example": "Batch Geocoding Pipeline"
+          },
+          "steps": {
+            "type": "integer",
+            "description": "Number of sequential progression steps (1-100)",
+            "default": 6,
+            "example": 5
+          },
+          "stepDelayMs": {
+            "type": "integer",
+            "description": "Simulated delay in milliseconds between each progress update",
+            "default": 1500,
+            "example": 1000
+          }
+        }
+      },
+      "FailingSampleRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Title of the simulated failing task",
+            "example": "Third-Party Payment Gateway Sync"
+          },
+          "failPermanently": {
+            "type": "boolean",
+            "description": "If true (default), the job will fail and permanently move to the 'Failed' tab in BullBoard",
+            "default": true,
+            "example": true
+          },
+          "attempts": {
+            "type": "integer",
+            "description": "Number of retry attempts before landing permanently in Failed tab",
+            "default": 1,
+            "example": 1
+          },
+          "errorMessage": {
+            "type": "string",
+            "description": "Custom error message displayed in BullBoard error logs",
+            "example": "Payment Gateway Timeout (HTTP 504)"
+          },
+          "failUntilAttempt": {
+            "type": "integer",
+            "description": "Optional: fail on attempts 1..(N-1) and succeed on attempt N",
+            "example": 3
+          }
+        }
+      },
+      "DelayedSampleRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Title of the delayed task",
+            "example": "Automated Report Dispatcher"
+          },
+          "delayMs": {
+            "type": "integer",
+            "description": "Time in milliseconds to delay execution",
+            "default": 10000,
+            "example": 10000
+          }
+        }
+      },
+      "BulkSampleRequest": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "description": "Number of parallel sample jobs to enqueue",
+            "default": 5,
+            "example": 5
+          }
+        }
+      },
+      "CustomJobCreateRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Job title shown in BullBoard",
+            "example": "Custom Processing Task"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["simple", "progress", "delayed", "failing", "heavy-compute", "custom"],
+            "description": "Execution simulation mode",
+            "default": "simple",
+            "example": "heavy-compute"
+          },
+          "durationMs": {
+            "type": "integer",
+            "description": "Duration or step delay in milliseconds",
+            "example": 1000
+          },
+          "steps": {
+            "type": "integer",
+            "description": "Number of steps or computation rounds",
+            "example": 5
+          },
+          "failUntilAttempt": {
+            "type": "integer",
+            "description": "Threshold attempt number to succeed",
+            "example": 2
+          },
+          "payload": {
+            "type": "object",
+            "description": "Arbitrary key-value payload stored in job",
+            "example": {
+              "recordId": "rec-100",
+              "action": "refresh"
+            }
+          },
+          "options": {
+            "$ref": "#/components/schemas/BullMQJobOptions"
+          }
+        }
+      },
+      "BullMQJobOptions": {
+        "type": "object",
+        "description": "Standard BullMQ job options",
+        "properties": {
+          "priority": {
+            "type": "integer",
+            "description": "Job priority (1 = highest priority)",
+            "example": 1
+          },
+          "delay": {
+            "type": "integer",
+            "description": "Delay in milliseconds before processing",
+            "example": 5000
+          },
+          "attempts": {
+            "type": "integer",
+            "description": "Total retry attempts on error",
+            "default": 3,
+            "example": 3
+          },
+          "backoff": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["fixed", "exponential"],
+                "example": "exponential"
+              },
+              "delay": {
+                "type": "integer",
+                "example": 2000
+              }
+            }
+          },
+          "removeOnComplete": {
+            "oneOf": [
+              { "type": "boolean" },
+              { "type": "integer" }
+            ],
+            "example": 500
+          },
+          "removeOnFail": {
+            "oneOf": [
+              { "type": "boolean" },
+              { "type": "integer" }
+            ],
+            "example": 500
+          }
+        }
+      },
+      "JobEnqueuedResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "message": { "type": "string", "example": "Job enqueued successfully" },
+          "jobId": { "type": "string", "example": "14" },
+          "name": { "type": "string", "example": "progress-k9z2f1" },
+          "queue": { "type": "string", "example": "optimized-jobs" },
+          "type": { "type": "string", "example": "progress" }
+        }
+      },
+      "DelayedJobEnqueuedResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "message": { "type": "string" },
+          "jobId": { "type": "string", "example": "16" },
+          "name": { "type": "string", "example": "delayed-k9z2k8" },
+          "delayMs": { "type": "integer", "example": 10000 }
+        }
+      },
+      "BulkEnqueuedResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "message": { "type": "string", "example": "Bulk enqueued 5 sample jobs" },
+          "jobIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "example": ["17", "18", "19", "20", "21"]
+          }
+        }
+      },
+      "QueueMetricsResponse": {
+        "type": "object",
+        "properties": {
+          "queueName": { "type": "string", "example": "optimized-jobs" },
+          "waiting": { "type": "integer", "example": 0 },
+          "active": { "type": "integer", "example": 1 },
+          "completed": { "type": "integer", "example": 25 },
+          "failed": { "type": "integer", "example": 2 },
+          "delayed": { "type": "integer", "example": 1 },
+          "paused": { "type": "boolean", "example": false },
+          "timestamp": { "type": "string", "format": "date-time", "example": "2026-09-21T21:55:00.000Z" }
+        }
+      },
+      "JobStatusResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "jobId": { "type": "string", "example": "14" },
+          "name": { "type": "string", "example": "progress-k9z2f1" },
+          "state": { "type": "string", "enum": ["waiting", "active", "completed", "failed", "delayed", "paused"], "example": "completed" },
+          "progress": {
+            "type": "object",
+            "properties": {
+              "percentage": { "type": "integer", "example": 100 },
+              "currentStep": { "type": "integer", "example": 5 },
+              "totalSteps": { "type": "integer", "example": 5 },
+              "status": { "type": "string", "example": "Finished" }
+            }
+          },
+          "logs": {
+            "type": "array",
+            "items": { "type": "string" },
+            "example": ["Started job #14", "Step 1/5 completed (20%)", "Completed job #14"]
+          },
+          "failedReason": { "type": "string", "nullable": true, "example": null },
+          "returnvalue": { "type": "object", "nullable": true },
+          "attemptsMade": { "type": "integer", "example": 1 },
+          "timestamp": { "type": "integer", "example": 1790027400000 },
+          "processedOn": { "type": "integer", "example": 1790027400100 },
+          "finishedOn": { "type": "integer", "example": 1790027405121 }
+        }
+      },
+      "GenericOperationResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "message": { "type": "string", "example": "Operation executed successfully" }
+        }
+      },
+      "CleanQueueResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "cleanedCount": { "type": "integer", "example": 10 }
+        }
+      },
+      "MigrationJobTriggerRequest": {
+        "type": "object",
+        "required": ["migration"],
+        "properties": {
+          "agentId": { "type": "string", "example": "agent-01" },
+          "organizationId": { "type": "string", "example": "org-default" },
+          "projectId": { "type": "string", "example": "proj-ecommerce" },
+          "migration": {
+            "type": "object",
+            "required": ["id", "source_type", "target_type"],
+            "properties": {
+              "id": { "type": "string", "example": "mig-cust-001" },
+              "name": { "type": "string", "example": "Customers Ingestion" },
+              "source_type": { "type": "string", "example": "csv" },
+              "source_file_path": { "type": "string", "example": "customers.csv" },
+              "target_type": { "type": "string", "example": "postgresql" },
+              "target_database": { "type": "string", "example": "client_db" },
+              "target_table": { "type": "string", "example": "customers" }
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "batchSize": { "type": "integer", "example": 1000 },
+              "ecoMode": { "type": "boolean", "example": true }
+            }
+          }
+        }
+      }
+    }
+  }
+}

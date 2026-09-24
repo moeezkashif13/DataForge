@@ -7,6 +7,7 @@ import {
   PlaygroundJobResult,
   OptimizedQueueMetrics,
 } from './optimized-background-jobs.types';
+import { MetricsService } from '../metrics/metrics.service';
 
 @Injectable()
 export class OptimizedBackgroundJobsService {
@@ -15,6 +16,7 @@ export class OptimizedBackgroundJobsService {
   constructor(
     @InjectQueue(OPTIMIZED_JOBS_QUEUE)
     private readonly queue: Queue,
+    private readonly metricsService: MetricsService,
   ) {}
 
   /**
@@ -47,6 +49,7 @@ export class OptimizedBackgroundJobsService {
     this.logger.log(
       `[Playground Queue] Enqueued "${job.name}" (ID: ${job.id}, Type: ${jobType})`,
     );
+    this.metricsService.recordJobAdded(OPTIMIZED_JOBS_QUEUE, jobType);
     return job;
   }
 
@@ -72,6 +75,10 @@ export class OptimizedBackgroundJobsService {
     }));
 
     const enqueuedJobs = await this.queue.addBulk(bulkData);
+    enqueuedJobs.forEach((job, idx) => {
+      const type = jobs[idx]?.data?.type || 'bulk';
+      this.metricsService.recordJobAdded(OPTIMIZED_JOBS_QUEUE, type);
+    });
     this.logger.log(
       `[Playground Queue] Bulk enqueued ${enqueuedJobs.length} jobs successfully`,
     );
@@ -181,7 +188,7 @@ export class OptimizedBackgroundJobsService {
    * Get queue counts and operational state
    */
   async getQueueMetrics(): Promise<OptimizedQueueMetrics> {
-    const [waiting, active, completed, failed, delayed, isPaused] =
+    const [waiting, active, completed, failed, delayed, isPaused, workersCount] =
       await Promise.all([
         this.queue.getWaitingCount(),
         this.queue.getActiveCount(),
@@ -189,6 +196,7 @@ export class OptimizedBackgroundJobsService {
         this.queue.getFailedCount(),
         this.queue.getDelayedCount(),
         this.queue.isPaused(),
+        this.queue.getWorkersCount().catch(() => 0),
       ]);
 
     return {
@@ -199,6 +207,7 @@ export class OptimizedBackgroundJobsService {
       failed,
       delayed,
       paused: isPaused,
+      workersCount,
       timestamp: new Date().toISOString(),
     };
   }

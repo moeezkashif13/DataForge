@@ -7,6 +7,7 @@ import { AppService } from './app.service';
 import { AgentSocketService } from './agent-socket/agent-socket.service';
 import { BackgroundJobsModule } from './background-jobs/background-jobs.module';
 import { OptimizedBackgroundJobsModule } from './optimized-background-jobs/optimized-background-jobs.module';
+import { MetricsModule } from './metrics/metrics.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { OptimizedBackgroundJobsModule } from './optimized-background-jobs/optim
     }),
     BackgroundJobsModule,
     OptimizedBackgroundJobsModule,
+    MetricsModule,
   ],
   controllers: [AppController],
   providers: [AppService, AgentSocketService],

@@ -10,6 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { OptimizedBackgroundJobsService } from './optimized-background-jobs.service';
+import { OptimizedBackgroundJobsProcessor } from './optimized-background-jobs.processor';
 import type {
   PlaygroundJobData,
   OptimizedQueueMetrics,
@@ -20,6 +21,7 @@ import type { JobsOptions } from 'bullmq';
 export class OptimizedBackgroundJobsController {
   constructor(
     private readonly jobsService: OptimizedBackgroundJobsService,
+    private readonly processor: OptimizedBackgroundJobsProcessor,
   ) {}
 
   /**
@@ -189,6 +191,41 @@ export class OptimizedBackgroundJobsController {
   @Post('queue/resume')
   async resumeQueue() {
     return this.jobsService.resumeQueue();
+  }
+
+  /**
+   * Get current worker concurrency
+   */
+  @Get('concurrency')
+  getConcurrency() {
+    return {
+      queue: 'optimized-jobs',
+      concurrency: this.processor.getConcurrency(),
+    };
+  }
+
+  /**
+   * Dynamically adjust worker concurrency at runtime
+   */
+  @Post('concurrency')
+  setConcurrency(@Body() body: { concurrency: number }) {
+    const newConcurrency = Number(body?.concurrency);
+    if (!newConcurrency || newConcurrency < 1 || !Number.isFinite(newConcurrency)) {
+      return {
+        success: false,
+        message: 'Invalid concurrency value. Must be a positive integer >= 1.',
+      };
+    }
+
+    const previousConcurrency = this.processor.getConcurrency();
+    const updated = this.processor.setConcurrency(newConcurrency);
+
+    return {
+      success: true,
+      message: `Worker concurrency updated from ${previousConcurrency} to ${updated}`,
+      previousConcurrency,
+      concurrency: updated,
+    };
   }
 
   /**

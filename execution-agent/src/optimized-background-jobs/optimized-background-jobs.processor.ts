@@ -6,12 +6,17 @@ import type {
   PlaygroundJobData,
   PlaygroundJobResult,
 } from './optimized-background-jobs.types';
+import { MetricsService } from '../metrics/metrics.service';
 
 @Processor(OPTIMIZED_JOBS_QUEUE, {
   concurrency: Number(process.env.PLAYGROUND_QUEUE_CONCURRENCY) || 3,
 })
 export class OptimizedBackgroundJobsProcessor extends WorkerHost {
   private readonly logger = new Logger(OptimizedBackgroundJobsProcessor.name);
+
+  constructor(private readonly metricsService: MetricsService) {
+    super();
+  }
 
   /**
    * Main processor executing playground test scenarios
@@ -159,12 +164,20 @@ export class OptimizedBackgroundJobsProcessor extends WorkerHost {
   @OnWorkerEvent('active')
   onActive(job: Job) {
     this.logger.log(`[Playground Worker] Job #${job.id} is now ACTIVE`);
+    const jobType = job.data?.type || 'simple';
+    this.metricsService.recordJobActive(OPTIMIZED_JOBS_QUEUE, jobType, job.timestamp);
   }
 
   @OnWorkerEvent('completed')
   onCompleted(job: Job, result: PlaygroundJobResult) {
     this.logger.log(
-      `[Playground Worker] Job #${job.id} COMPLETED in ${result.durationMs}ms`,
+      `[Playground Worker] Job #${job.id} COMPLETED in ${result?.durationMs || 0}ms`,
+    );
+    const jobType = job.data?.type || 'simple';
+    this.metricsService.recordJobCompleted(
+      OPTIMIZED_JOBS_QUEUE,
+      jobType,
+      result?.durationMs || 0,
     );
   }
 
@@ -173,6 +186,33 @@ export class OptimizedBackgroundJobsProcessor extends WorkerHost {
     this.logger.error(
       `[Playground Worker] Job #${job.id} FAILED: ${error.message}`,
     );
+    const jobType = job.data?.type || 'simple';
+    const errorType =
+      job.data?.payload?.category ||
+      (error.message.includes('ETIMEDOUT')
+        ? 'database_timeout_blip'
+        : error.message.includes('503') || error.message.includes('429')
+          ? 'transient_rate_limit'
+          : error.message.includes('foreign key') || error.message.includes('Constraint')
+            ? 'poison_pill_schema'
+            : error.message.includes('ECONNREFUSED')
+              ? 'downstream_hard_outage'
+              : error.name || 'JobError');
+
+    this.metricsService.recordJobFailed(
+      OPTIMIZED_JOBS_QUEUE,
+      jobType,
+      errorType,
+    );
+    if (job.attemptsMade > 0) {
+      this.metricsService.recordJobRetried(OPTIMIZED_JOBS_QUEUE);
+    }
+  }
+
+  @OnWorkerEvent('stalled')
+  onStalled(jobId: string) {
+    this.logger.warn(`[Playground Worker] Job #${jobId} STALLED (reclaimed by BullMQ)`);
+    this.metricsService.recordJobStalled(OPTIMIZED_JOBS_QUEUE);
   }
 
   @OnWorkerEvent('progress')
@@ -188,5 +228,24 @@ export class OptimizedBackgroundJobsProcessor extends WorkerHost {
       `[Playground Worker] Worker error: ${error.message}`,
       error.stack,
     );
+    this.metricsService.recordWorkerError(OPTIMIZED_JOBS_QUEUE);
+  }
+
+  /**
+   * Dynamically adjust the worker concurrency at runtime
+   */
+  setConcurrency(newConcurrency: number): number {
+    if (this.worker) {
+      this.worker.concurrency = newConcurrency;
+      this.logger.log(
+        `[Playground Worker] Concurrency dynamically updated to ${newConcurrency}`,
+      );
+      return this.worker.concurrency;
+    }
+    throw new Error('Worker instance not initialized yet');
+  }
+
+  getConcurrency(): number {
+    return this.worker?.concurrency || Number(process.env.PLAYGROUND_QUEUE_CONCURRENCY) || 3;
   }
 }
