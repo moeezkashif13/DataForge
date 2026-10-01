@@ -11,6 +11,8 @@ import { Organization } from '../../models/organization.model';
 import { User } from '../../models/user.model';
 import { OrganizationUser } from '../../models/organization-user.model';
 import { OrganizationInvitation } from '../../models/organization-invitation.model';
+import { Permission } from '../../models/permission.model';
+import { OrganizationUserPermission } from '../../models/organization-user-permission.model';
 import { auth } from '../auth/auth';
 import * as crypto from 'crypto';
 
@@ -28,6 +30,12 @@ export class OrganizationService {
 
     @InjectModel(OrganizationInvitation)
     private organizationInvitationModel: typeof OrganizationInvitation,
+
+    @InjectModel(Permission)
+    private permissionModel: typeof Permission,
+
+    @InjectModel(OrganizationUserPermission)
+    private orgUserPermissionModel: typeof OrganizationUserPermission,
 
     @InjectConnection()
     private sequelize: Sequelize,
@@ -260,6 +268,15 @@ export class OrganizationService {
           model: User,
           attributes: ['id', 'name', 'email', 'createdAt'],
         },
+        {
+          model: OrganizationUserPermission,
+          include: [
+            {
+              model: Permission,
+              attributes: ['id', 'name', 'description'],
+            },
+          ],
+        },
       ],
       order: [['createdAt', 'ASC']],
     });
@@ -272,7 +289,7 @@ export class OrganizationService {
       order: [['createdAt', 'DESC']],
     });
 
-    const activeMembers = orgUsers.map((ou) => {
+    const activeMembers = orgUsers.map((ou: any) => {
       const u = ou.user;
       const name = u?.name || u?.email?.split('@')[0] || 'Team Member';
       const initials =
@@ -290,12 +307,17 @@ export class OrganizationService {
       else if (rawRole === 'owner') role = 'Owner';
       else if (rawRole === 'viewer') role = 'Viewer';
 
+      const permissions = (ou.organizationUserPermissions || [])
+        .map((oup: any) => oup.permission?.name)
+        .filter(Boolean);
+
       return {
         id: ou.id,
         userId: ou.userId,
         name,
         email: u?.email || '',
         role,
+        permissions,
         status: 'Active',
         joined: new Date(ou.createdAt).toLocaleDateString('en-US', {
           month: 'short',
@@ -314,6 +336,7 @@ export class OrganizationService {
         name: `${name} (Invited)`,
         email: inv.email,
         role: 'Operator',
+        permissions: [],
         status: 'Pending',
         joined: new Date(inv.createdAt).toLocaleDateString('en-US', {
           month: 'short',
@@ -329,6 +352,94 @@ export class OrganizationService {
       organizationId: targetOrgId,
       members: [...activeMembers, ...invitedMembers],
     };
+  }
+
+  async updateMemberPermissions(input: {
+    actorUserId: string;
+    organizationId: string;
+    memberId: string;
+    permissionNames: string[];
+  }) {
+    const { actorUserId, organizationId, memberId, permissionNames } = input;
+
+    // 1. Verify actor is Admin or Owner of this organization
+    const actorMembership = await this.organizationUserModel.findOne({
+      where: {
+        userId: actorUserId,
+        organizationId,
+      },
+    });
+
+    if (!actorMembership) {
+      throw new ForbiddenException(
+        'You are not a member of this organization',
+      );
+    }
+
+    const actorRole = (actorMembership.role || '').toLowerCase();
+    if (actorRole !== 'admin' && actorRole !== 'owner') {
+      throw new ForbiddenException(
+        'Only organization admins or owners can manage user permissions',
+      );
+    }
+
+    // 2. Find target member in organization
+    const targetMember = await this.organizationUserModel.findOne({
+      where: {
+        id: memberId,
+        organizationId,
+      },
+      include: [{ model: User, attributes: ['id', 'email', 'name'] }],
+    });
+
+    if (!targetMember) {
+      throw new NotFoundException('Organization member not found');
+    }
+
+    if ((targetMember.role || '').toLowerCase() === 'owner') {
+      throw new BadRequestException(
+        'Permissions for the organization owner cannot be altered',
+      );
+    }
+
+    // 3. Resolve permissionNames to Permission records
+    const requestedPermissions = await this.permissionModel.findAll({
+      where: {
+        name: permissionNames,
+      },
+    });
+
+    // 4. Atomic sync within a transaction
+    const transaction = await this.sequelize.transaction();
+    try {
+      await this.orgUserPermissionModel.destroy({
+        where: {
+          organizationUserId: targetMember.id,
+        },
+        transaction,
+      });
+
+      if (requestedPermissions.length > 0) {
+        const records = requestedPermissions.map((p) => ({
+          organizationUserId: targetMember.id,
+          permissionId: p.id,
+        }));
+        await this.orgUserPermissionModel.bulkCreate(records as any, {
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      return {
+        memberId: targetMember.id,
+        userId: targetMember.userId,
+        permissions: requestedPermissions.map((p) => p.name),
+      };
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
   }
 
   async inviteUser(input: {

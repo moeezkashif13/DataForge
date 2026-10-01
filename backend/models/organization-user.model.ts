@@ -5,17 +5,25 @@ import {
   DataType,
   ForeignKey,
   BelongsTo,
+  HasMany,
   Index,
 } from 'sequelize-typescript';
 
 import { Organization } from './organization.model';
 import { User } from './user.model';
+import { OrganizationUserPermission } from './organization-user-permission.model';
 
 @Table({
   tableName: 'organization_users',
   timestamps: true,
 })
 export class OrganizationUser extends Model<OrganizationUser> {
+  @Column({
+    type: DataType.UUID,
+    defaultValue: DataType.UUIDV4,
+    primaryKey: true,
+  })
+  declare id: string;
   @ForeignKey(() => Organization)
   @Index
   @Column({
@@ -48,4 +56,7 @@ export class OrganizationUser extends Model<OrganizationUser> {
     onDelete: 'CASCADE',
   })
   declare user: User;
+
+  @HasMany(() => OrganizationUserPermission)
+  declare organizationUserPermissions: OrganizationUserPermission[];
 }

@@ -7,9 +7,12 @@ import {
   HttpException,
   HttpStatus,
   Post,
+  Put,
+  Param,
   Query,
   Res,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { OrganizationService } from './organization.service';
@@ -127,6 +130,47 @@ export class OrganizationController {
         statusCode: HttpStatus.OK,
         organizationId: data.organizationId,
         members: data.members,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Internal server error',
+        error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Put('members/:memberId/permissions')
+  async updateMemberPermissions(
+    @CurrentUser() user: { id: string } | null,
+    @Param('memberId') memberId: string,
+    @Body() body: { organizationId: string; permissionNames: string[] },
+  ) {
+    if (!user?.id) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    const { organizationId, permissionNames } = body;
+    if (!organizationId) {
+      throw new BadRequestException('organizationId is required');
+    }
+    if (!Array.isArray(permissionNames)) {
+      throw new BadRequestException(
+        'permissionNames must be an array of strings',
+      );
+    }
+
+    try {
+      const result = await this.organizationService.updateMemberPermissions({
+        actorUserId: user.id,
+        organizationId,
+        memberId,
+        permissionNames,
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Member permissions updated successfully',
+        ...result,
       };
     } catch (error: any) {
       throw new HttpException(

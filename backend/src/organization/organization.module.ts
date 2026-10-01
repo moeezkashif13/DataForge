@@ -11,6 +11,8 @@ import { OrganizationInvitation } from '../../models/organization-invitation.mod
 import { Project } from '../../models/project.model';
 import { ProjectUser } from '../../models/project-user.model';
 import { Migration } from '../../models/migration.model';
+import { Permission } from '../../models/permission.model';
+import { OrganizationUserPermission } from '../../models/organization-user-permission.model';
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { Migration } from '../../models/migration.model';
       Project,
       ProjectUser,
       Migration,
+      Permission,
+      OrganizationUserPermission,
     ]),
   ],
   controllers: [OrganizationController, ProjectController],

@@ -27,10 +27,20 @@ export const organizationApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [{ type: "Organization", id: "MEMBERS" }],
     }),
+
+    updateMemberPermissions: builder.mutation({
+      query: ({ memberId, organizationId, permissionNames }) => ({
+        url: `/organization/members/${memberId}/permissions`,
+        method: "PUT",
+        body: { organizationId, permissionNames },
+      }),
+      invalidatesTags: [{ type: "Organization", id: "MEMBERS" }],
+    }),
   }),
 });
 
 export const {
   useGetOrganizationMembersQuery,
   useInviteMemberMutation,
+  useUpdateMemberPermissionsMutation,
 } = organizationApi;

@@ -9,14 +9,69 @@ import {
   CheckCircle2,
   Loader2,
   Copy,
+  X,
 } from "lucide-react";
 import {
   useGetOrganizationMembersQuery,
   useInviteMemberMutation,
+  useUpdateMemberPermissionsMutation,
 } from "../store/api/organizationApi";
 import { selectOrganizationId } from "../store/slices/authSlice";
 import { EmptyState } from "../components/ui/EmptyState";
 import { useToast } from "../context/ToastContext";
+
+const AVAILABLE_PERMISSIONS = [
+  {
+    category: "Projects",
+    permissions: [
+      {
+        id: "project:read",
+        label: "View Projects",
+        description: "Read-only access to view project lists and details.",
+      },
+      {
+        id: "project:create",
+        label: "Create Projects",
+        description: "Provision and setup new migration projects.",
+      },
+      {
+        id: "project:update",
+        label: "Update Projects",
+        description: "Modify project settings and configuration.",
+      },
+      {
+        id: "project:delete",
+        label: "Delete Projects",
+        description: "Permanently delete projects and associated resources.",
+      },
+    ],
+  },
+  {
+    category: "Execution Agents",
+    permissions: [
+      {
+        id: "agent:read",
+        label: "View Agents",
+        description: "Monitor agent telemetry and connection health.",
+      },
+      {
+        id: "agent:create",
+        label: "Register Agents",
+        description: "Generate agent pairing tokens and connect workers.",
+      },
+      {
+        id: "agent:update",
+        label: "Update Agents",
+        description: "Edit agent parameters and assignment.",
+      },
+      {
+        id: "agent:delete",
+        label: "Delete Agents",
+        description: "Revoke connection tokens and remove agents.",
+      },
+    ],
+  },
+];
 
 export default function Team() {
   const organizationId = useSelector(selectOrganizationId);
@@ -24,12 +79,65 @@ export default function Team() {
     organizationId || undefined,
   );
   const [inviteMember, { isLoading: isInviting }] = useInviteMemberMutation();
+  const [updateMemberPermissions, { isLoading: isUpdatingPermissions }] =
+    useUpdateMemberPermissionsMutation();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("Operator");
   const [invitedMembers, setInvitedMembers] = useState([]);
   const { showToast } = useToast();
+
+  // State for Manage Permissions Modal
+  const [managingMember, setManagingMember] = useState(null);
+  const [selectedPermissions, setSelectedPermissions] = useState([]);
+  const [memberPermissionsMap, setMemberPermissionsMap] = useState({});
+
+  const handleOpenManage = (member) => {
+    setManagingMember(member);
+    const existing =
+      memberPermissionsMap[member.id] ||
+      member.permissions ||
+      [];
+    setSelectedPermissions(existing);
+  };
+
+  const handleTogglePermission = (permId) => {
+    setSelectedPermissions((prev) =>
+      prev.includes(permId)
+        ? prev.filter((id) => id !== permId)
+        : [...prev, permId],
+    );
+  };
+
+  const handleSavePermissions = async () => {
+    if (!managingMember) return;
+    try {
+      await updateMemberPermissions({
+        memberId: managingMember.id,
+        organizationId: organizationId || undefined,
+        permissionNames: selectedPermissions,
+      }).unwrap();
+
+      setMemberPermissionsMap((prev) => ({
+        ...prev,
+        [managingMember.id]: selectedPermissions,
+      }));
+
+      showToast(
+        "Permissions Updated",
+        `Permissions successfully updated for ${managingMember.name || managingMember.email}.`,
+        "success",
+      );
+      setManagingMember(null);
+    } catch (err) {
+      showToast(
+        "Update Failed",
+        err?.data?.message || err?.message || "Failed to update permissions",
+        "error",
+      );
+    }
+  };
 
   // Combined list ensuring newly invited members render immediately with status "Pending"
   const allMembers = [
@@ -253,14 +361,8 @@ export default function Team() {
                       member.role !== "Owner" && (
                         <button
                           type="button"
-                          onClick={() =>
-                            showToast(
-                              "Permission",
-                              "Contact the organization owner to modify role.",
-                              "info",
-                            )
-                          }
-                          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs cursor-pointer"
+                          onClick={() => handleOpenManage(member)}
+                          className="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-semibold text-xs cursor-pointer transition-colors"
                         >
                           Manage
                         </button>
@@ -344,6 +446,125 @@ export default function Team() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Manage Member Permissions Modal */}
+      {managingMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 font-bold text-sm flex items-center justify-center font-mono">
+                  {managingMember.avatar ||
+                    managingMember.name?.charAt(0)?.toUpperCase() ||
+                    "U"}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Manage Permissions
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {managingMember.name} •{" "}
+                    <span className="font-mono">{managingMember.email}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setManagingMember(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto py-4 space-y-5 flex-1 pr-1">
+              {AVAILABLE_PERMISSIONS.map((group) => (
+                <div key={group.category} className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                      {group.category}
+                    </h4>
+                    <span className="text-[11px] text-slate-400">
+                      {
+                        group.permissions.filter((p) =>
+                          selectedPermissions.includes(p.id),
+                        ).length
+                      }{" "}
+                      of {group.permissions.length} active
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2">
+                    {group.permissions.map((perm) => {
+                      const isChecked = selectedPermissions.includes(perm.id);
+                      return (
+                        <label
+                          key={perm.id}
+                          className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none ${
+                            isChecked
+                              ? "bg-indigo-50/60 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800/60"
+                              : "bg-slate-50/50 dark:bg-slate-800/40 border-slate-200/70 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleTogglePermission(perm.id)}
+                            className="mt-0.5 h-4 w-4 rounded text-indigo-600 border-slate-300 dark:border-slate-700 focus:ring-indigo-500 cursor-pointer"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold text-slate-900 dark:text-white">
+                                {perm.label}
+                              </span>
+                              <span className="text-[10px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                {perm.id}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                              {perm.description}
+                            </p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+              <span className="text-xs text-slate-400">
+                {selectedPermissions.length} permissions selected
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setManagingMember(null)}
+                  className="px-4 py-2 text-xs font-medium rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isUpdatingPermissions}
+                  onClick={handleSavePermissions}
+                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white shadow-md shadow-indigo-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  {isUpdatingPermissions ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Update Permissions</span>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
