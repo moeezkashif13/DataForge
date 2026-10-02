@@ -13,6 +13,7 @@ import {
 import { ProjectService } from './project.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { CurrentUser } from '../auth/auth.guard';
+import { RequirePermissions } from 'src/auth/permissions.decorator';
 
 @Controller('organization/projects')
 export class ProjectController {
@@ -24,11 +25,10 @@ export class ProjectController {
     @Query('organizationId') organizationId?: string,
   ) {
     try {
-      const result =
-        await this.projectService.getProjectsForUserOrganization(
-          user?.id,
-          organizationId,
-        );
+      const result = await this.projectService.getProjectsForUserOrganization(
+        user?.id,
+        organizationId,
+      );
 
       return {
         statusCode: HttpStatus.OK,
@@ -70,6 +70,7 @@ export class ProjectController {
   }
 
   @Post('create')
+  @RequirePermissions('project:create')
   async createProject(
     @Body() body: CreateProjectDto,
     @CurrentUser() user: { id: string },
