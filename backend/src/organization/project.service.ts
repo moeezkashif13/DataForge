@@ -138,9 +138,10 @@ export class ProjectService {
     }
 
     let targetOrganizationId = requestedOrgId;
+    let membership: OrganizationUser | null = null;
 
     if (targetOrganizationId) {
-      const membership = await this.organizationUserModel.findOne({
+      membership = await this.organizationUserModel.findOne({
         where: {
           userId,
           organizationId: targetOrganizationId,
@@ -162,7 +163,20 @@ export class ProjectService {
         return { organizationId: null, projects: [] };
       }
 
+      membership = userOrgs[0];
       targetOrganizationId = userOrgs[0].organizationId;
+    }
+
+    const orgRole = (membership?.role || '').toLowerCase();
+    const isOrgOwner = orgRole === 'owner';
+
+    const projectUserInclude: any = {
+      model: ProjectUser,
+      attributes: ['id', 'role'],
+      required: !isOrgOwner,
+    };
+    if (!isOrgOwner) {
+      projectUserInclude.where = { userId };
     }
 
     const projects = await this.projectModel.findAll({
@@ -176,12 +190,7 @@ export class ProjectService {
           attributes: ['id'],
           required: false,
         },
-        {
-          model: ProjectUser,
-          where: { userId },
-          required: true,
-          attributes: ['id', 'role'],
-        },
+        projectUserInclude,
       ],
     });
 
@@ -261,9 +270,12 @@ export class ProjectService {
       },
     });
 
-    if (!orgMembership || !projectMembership) {
+    const isOrgOwner =
+      orgMembership?.role?.toLowerCase() === 'owner';
+
+    if (!orgMembership || (!isOrgOwner && !projectMembership)) {
       throw new ForbiddenException(
-        'You do not have permission to view this project. You must be an assigned member of this project.',
+        'You do not have permission to view this project. You must be an assigned member or an organization owner.',
       );
     }
 
@@ -351,9 +363,12 @@ export class ProjectService {
       },
     });
 
-    if (!orgMembership || !projectMembership) {
+    const isOrgOwner =
+      orgMembership?.role?.toLowerCase() === 'owner';
+
+    if (!orgMembership || (!isOrgOwner && !projectMembership)) {
       throw new ForbiddenException(
-        'You do not have permission to delete this project. You must be an assigned member of this project.',
+        'You do not have permission to delete this project. You must be an assigned member or an organization owner.',
       );
     }
 
@@ -380,7 +395,7 @@ export class ProjectService {
       throw new NotFoundException(`Project with ID ${projectId} not found`);
     }
 
-    // Verify current user is an assigned member of this project
+    // Verify current user is an assigned member of this project or an org admin/owner
     const currentProjectUser = await this.projectUserModel.findOne({
       where: { projectId, userId: currentUserId },
     });
@@ -388,9 +403,12 @@ export class ProjectService {
       where: { organizationId: project.organizationId, userId: currentUserId },
     });
 
-    if (!currentProjectUser || !currentOrgUser) {
+    const isCurrentOrgOwner =
+      currentOrgUser?.role?.toLowerCase() === 'owner';
+
+    if (!currentOrgUser || (!isCurrentOrgOwner && !currentProjectUser)) {
       throw new ForbiddenException(
-        'You do not have permission to add users to this project. You must be an assigned member of this project.',
+        'You do not have permission to add users to this project. You must be an assigned member or an organization owner.',
       );
     }
 

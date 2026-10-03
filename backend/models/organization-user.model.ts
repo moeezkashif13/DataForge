@@ -41,11 +41,11 @@ export class OrganizationUser extends Model<OrganizationUser> {
   declare userId: string;
 
   @Column({
-    type: DataType.STRING(50),
+    type: DataType.ENUM('owner', 'user'),
     allowNull: false,
     defaultValue: 'user',
   })
-  declare role: string;
+  declare role: 'owner' | 'user';
 
   @BelongsTo(() => Organization, {
     onDelete: 'CASCADE',

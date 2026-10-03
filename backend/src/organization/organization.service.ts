@@ -13,6 +13,8 @@ import { OrganizationUser } from '../../models/organization-user.model';
 import { OrganizationInvitation } from '../../models/organization-invitation.model';
 import { Permission } from '../../models/permission.model';
 import { OrganizationUserPermission } from '../../models/organization-user-permission.model';
+import { Project } from '../../models/project.model';
+import { ProjectUser } from '../../models/project-user.model';
 import { auth } from '../auth/auth';
 import * as crypto from 'crypto';
 
@@ -36,6 +38,12 @@ export class OrganizationService {
 
     @InjectModel(OrganizationUserPermission)
     private orgUserPermissionModel: typeof OrganizationUserPermission,
+
+    @InjectModel(Project)
+    private projectModel: typeof Project,
+
+    @InjectModel(ProjectUser)
+    private projectUserModel: typeof ProjectUser,
 
     @InjectConnection()
     private sequelize: Sequelize,
@@ -163,7 +171,7 @@ export class OrganizationService {
   async associateUserToOrganization(
     organizationId: string,
     userId: string,
-    role: 'admin' | 'user',
+    role: string = 'user',
     transaction?: Transaction,
   ): Promise<OrganizationUser> {
     return this.organizationUserModel.create(
@@ -195,7 +203,7 @@ export class OrganizationService {
         await this.associateUserToOrganization(
           organization.id,
           authResult.id,
-          'admin',
+          'owner',
           transaction,
         );
         return {
@@ -215,12 +223,26 @@ export class OrganizationService {
     }
   }
 
-  async getUserOrganizations(userId: string): Promise<OrganizationUser[]> {
-    return this.organizationUserModel.findAll({
+  async getUserOrganizations(userId: string) {
+    const orgUsers = await this.organizationUserModel.findAll({
       where: { userId },
       order: [['createdAt', 'ASC']],
-      include: [Organization],
+      include: [
+        {
+          model: Organization,
+          attributes: ['id', 'name', 'createdAt'],
+        },
+      ],
     });
+
+    return orgUsers
+      .filter((ou: any) => Boolean(ou.organization))
+      .map((ou: any) => ({
+        id: ou.organization.id,
+        name: ou.organization.name,
+        role: ou.role,
+        joinedAt: ou.createdAt,
+      }));
   }
 
   async getUserPrimaryOrganization(
@@ -301,11 +323,8 @@ export class OrganizationService {
           .toUpperCase()
           .slice(0, 2) || 'U';
 
-      const rawRole = (ou.role || 'operator').toLowerCase();
-      let role = 'Operator';
-      if (rawRole === 'admin') role = 'Admin';
-      else if (rawRole === 'owner') role = 'Owner';
-      else if (rawRole === 'viewer') role = 'Viewer';
+      const rawRole = (ou.role || 'user').toLowerCase();
+      const role = rawRole === 'owner' ? 'Owner' : 'User';
 
       const permissions = (ou.organizationUserPermissions || [])
         .map((oup: any) => oup.permission?.name)
@@ -335,7 +354,7 @@ export class OrganizationService {
         userId: null,
         name: `${name} (Invited)`,
         email: inv.email,
-        role: 'Operator',
+        role: 'User',
         permissions: [],
         status: 'Pending',
         joined: new Date(inv.createdAt).toLocaleDateString('en-US', {
@@ -362,7 +381,7 @@ export class OrganizationService {
   }) {
     const { actorUserId, organizationId, memberId, permissionNames } = input;
 
-    // 1. Verify actor is Admin or Owner of this organization
+    // 1. Verify actor is Owner of this organization
     const actorMembership = await this.organizationUserModel.findOne({
       where: {
         userId: actorUserId,
@@ -371,15 +390,13 @@ export class OrganizationService {
     });
 
     if (!actorMembership) {
-      throw new ForbiddenException(
-        'You are not a member of this organization',
-      );
+      throw new ForbiddenException('You are not a member of this organization');
     }
 
     const actorRole = (actorMembership.role || '').toLowerCase();
-    if (actorRole !== 'admin' && actorRole !== 'owner') {
+    if (actorRole !== 'owner') {
       throw new ForbiddenException(
-        'Only organization admins or owners can manage user permissions',
+        'Only the organization owner can manage user permissions',
       );
     }
 
@@ -442,6 +459,107 @@ export class OrganizationService {
     }
   }
 
+  async removeOrganizationMember(input: {
+    actorUserId: string;
+    organizationId: string;
+    memberId: string;
+  }) {
+    const { actorUserId, organizationId, memberId } = input;
+
+    // 1. Verify actor is Owner of this organization
+    const actorMembership = await this.organizationUserModel.findOne({
+      where: {
+        userId: actorUserId,
+        organizationId,
+      },
+    });
+
+    if (!actorMembership) {
+      throw new ForbiddenException('You are not a member of this organization');
+    }
+
+    const actorRole = (actorMembership.role || '').toLowerCase();
+    if (actorRole !== 'owner') {
+      throw new ForbiddenException(
+        'Only the organization owner can remove members',
+      );
+    }
+
+    // 2. Check if this is a pending invitation being canceled/deleted
+    const pendingInvitation = await this.organizationInvitationModel.findOne({
+      where: {
+        id: memberId,
+        organizationId,
+      },
+    });
+
+    if (pendingInvitation) {
+      await pendingInvitation.destroy();
+      return {
+        success: true,
+        message: 'Pending invitation canceled successfully',
+      };
+    }
+
+    // 3. Otherwise find the target active member
+    const targetMember = await this.organizationUserModel.findOne({
+      where: {
+        id: memberId,
+        organizationId,
+      },
+    });
+
+    if (!targetMember) {
+      throw new NotFoundException('Member not found in this organization');
+    }
+
+    if (targetMember.userId === actorUserId) {
+      throw new BadRequestException(
+        'You cannot remove yourself from the organization',
+      );
+    }
+
+    if ((targetMember.role || '').toLowerCase() === 'owner') {
+      throw new BadRequestException('The organization owner cannot be removed');
+    }
+
+    // 4. Perform atomic deletion in transaction
+    const transaction = await this.sequelize.transaction();
+    try {
+      // Find all projects in this organization
+      const orgProjects = await this.projectModel.findAll({
+        where: { organizationId },
+        attributes: ['id'],
+        transaction,
+      });
+      const projectIds = orgProjects.map((p) => p.id);
+
+      // Remove member from all project_users in this organization
+      if (projectIds.length > 0) {
+        await this.projectUserModel.destroy({
+          where: {
+            userId: targetMember.userId,
+            projectId: projectIds,
+          },
+          transaction,
+        });
+      }
+
+      // Delete organization_users record (cascades to organization_user_permissions)
+      await targetMember.destroy({ transaction });
+
+      await transaction.commit();
+
+      return {
+        success: true,
+        message: 'Member removed from organization successfully',
+      };
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
   async inviteUser(input: {
     organizationId: string;
     invitedBy: string;
@@ -486,7 +604,9 @@ export class OrganizationService {
     }
 
     if (invitation.status !== 'pending') {
-      throw new BadRequestException(`Invitation is already ${invitation.status}`);
+      throw new BadRequestException(
+        `Invitation is already ${invitation.status}`,
+      );
     }
 
     if (invitation.expiresAt && invitation.expiresAt.getTime() < Date.now()) {

@@ -36,6 +36,20 @@ export const organizationApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [{ type: "Organization", id: "MEMBERS" }],
     }),
+
+    removeMember: builder.mutation({
+      query: ({ memberId, organizationId }) => ({
+        url: `/organization/members/${memberId}?organizationId=${organizationId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: [{ type: "Organization", id: "MEMBERS" }],
+    }),
+
+    getMyOrganizations: builder.query({
+      query: () => "/organization/my-organizations",
+      transformResponse: (response) => response?.organizations || [],
+      providesTags: [{ type: "Organization", id: "USER_ORGS" }],
+    }),
   }),
 });
 
@@ -43,4 +57,6 @@ export const {
   useGetOrganizationMembersQuery,
   useInviteMemberMutation,
   useUpdateMemberPermissionsMutation,
+  useRemoveMemberMutation,
+  useGetMyOrganizationsQuery,
 } = organizationApi;

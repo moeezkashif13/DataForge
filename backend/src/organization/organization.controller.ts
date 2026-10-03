@@ -8,6 +8,7 @@ import {
   HttpStatus,
   Post,
   Put,
+  Delete,
   Param,
   Query,
   Res,
@@ -111,6 +112,27 @@ export class OrganizationController {
     }
   }
 
+  @Get('my-organizations')
+  async getMyOrganizations(@CurrentUser() user: { id: string } | null) {
+    if (!user?.id) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    try {
+      const organizations =
+        await this.organizationService.getUserOrganizations(user.id);
+      return {
+        statusCode: HttpStatus.OK,
+        organizations,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Internal server error',
+        error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
   @Get('members')
   async getOrganizationMembers(
     @CurrentUser() user: { id: string } | null,
@@ -170,6 +192,39 @@ export class OrganizationController {
       return {
         statusCode: HttpStatus.OK,
         message: 'Member permissions updated successfully',
+        ...result,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || 'Internal server error',
+        error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Delete('members/:memberId')
+  async removeMember(
+    @CurrentUser() user: { id: string } | null,
+    @Param('memberId') memberId: string,
+    @Query('organizationId') organizationId?: string,
+  ) {
+    if (!user?.id) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    if (!organizationId) {
+      throw new BadRequestException('organizationId is required');
+    }
+
+    try {
+      const result = await this.organizationService.removeOrganizationMember({
+        actorUserId: user.id,
+        organizationId,
+        memberId,
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
         ...result,
       };
     } catch (error: any) {
